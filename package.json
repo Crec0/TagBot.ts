@@ -1,7 +1,16 @@
 {
-	"type": "module",
-	"dependencies": {
-		"discord.js": "^14.3.0",
-		"dotenv": "^16.0.2"
-	}
+    "type": "module",
+    "scripts": {
+        "run": "tsc -p tsconfig.json && node ."
+    },
+    "dependencies": {
+        "better-sqlite3": "^8.6.0",
+        "discord.js": "^14.3.0",
+        "dotenv": "^16.0.2"
+    },
+    "devDependencies": {
+        "@types/node": "^20.7.1",
+        "drizzle-kit": "^0.19.13",
+        "typescript": "^5.2.2"
+    }
 }

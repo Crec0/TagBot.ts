@@ -1,15 +1,5 @@
-import fs, { existsSync } from 'fs';
-import dotenv from 'dotenv';
-import { Client, ActivityType, ApplicationCommandType, ApplicationCommandOptionType } from 'discord.js';
+import {ApplicationCommandOptionType, ApplicationCommandType} from "discord.js";
 
-dotenv.config();
-const client = new Client({
-	intents: [],
-	allowedMentions: { parse: [] },
-	presence: {
-		activities: [{ name: '/tag', type: ActivityType.Listening }]
-	}
-});
 
 const commandsData = [
 	{
@@ -22,6 +12,12 @@ const commandsData = [
 			{ type: ApplicationCommandOptionType.String, name: 'content', description: 'The message to return as the output' },
 			{ type: ApplicationCommandOptionType.Attachment, name: 'attachment', description: 'The attachment to return as the output' }
 		]
+	},
+	{
+		name: 'context-menu-create-tag',
+		description: 'Creates a tag from this message',
+		type: ApplicationCommandType.User,
+		dmPermission: false
 	},
 	{
 		name: 'deletetag',
@@ -40,17 +36,6 @@ const commandsData = [
 		options: [{ type: ApplicationCommandOptionType.String, name: 'tag', description: 'The tag to get information about', autocomplete: true, required: true }]
 	}
 ];
-
-function readTags() {
-	return existsSync('./tags.json') ? JSON.parse(fs.readFileSync('./tags.json')) : {};
-}
-
-function writeTags(tags) {
-	fs.writeFileSync(
-		'./tags.json',
-		JSON.stringify(tags, (key, value) => value ?? undefined, 3)
-	);
-}
 
 client.once('ready', async () => {
 	console.log(`${client.user.tag} is online!`);
@@ -132,5 +117,3 @@ async function handleCommand(interaction) {
 		await interaction.reply(tagNames.length > 0 ? `Available tags: ${tagNames.sort((a, b) => a.localeCompare(b, { sensitivity: 'base' })).join(', ')}` : 'No tags exist');
 	}
 }
-
-await client.login(process.env.DISCORD_TOKEN);

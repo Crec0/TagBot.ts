@@ -7,7 +7,7 @@
 * Invite the bot to your server
 * Install the dependencies with `npm install`
 * Create a `.env` file with the `DISCORD_TOKEN` property set
-* Run the bot with `node index.js`
+* Run the bot with `node index.ts`
 
 ## Commands
 
