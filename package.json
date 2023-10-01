@@ -1,16 +1,19 @@
 {
     "type": "module",
+    "main": "build/index.js",
     "scripts": {
-        "run": "tsc -p tsconfig.json && node ."
+        "launch": "tsc -p tsconfig.json && node ."
     },
     "dependencies": {
         "better-sqlite3": "^8.6.0",
         "discord.js": "^14.3.0",
-        "dotenv": "^16.0.2"
+        "dotenv": "^16.0.2",
+        "drizzle-orm": "^0.28.6"
     },
     "devDependencies": {
+        "@types/better-sqlite3": "^7.6.5",
         "@types/node": "^20.7.1",
-        "drizzle-kit": "^0.19.13",
+        "ts-node": "^10.9.1",
         "typescript": "^5.2.2"
     }
 }
