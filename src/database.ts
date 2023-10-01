@@ -37,7 +37,7 @@ db.run(sql`
     CREATE TABLE IF NOT EXISTS attachments
     (
         tag_id INTEGER NOT NULL,
-        data   BLOB    NOT NULL,
+        url    TEXT    NOT NULL,
         FOREIGN KEY (tag_id) REFERENCES tags (tag_id)
     );
 `);
