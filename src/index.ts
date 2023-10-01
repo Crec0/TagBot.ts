@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import {ActivityType, Client, Interaction} from 'discord.js';
+import {ActivityType, Client, GatewayIntentBits, Guild, Interaction} from 'discord.js';
 import {commands, handleAutocomplete, handleChatCommand, handleMessageContextMenuCommand} from './commands.js';
 import {runMigrations} from './database.js';
 
@@ -8,7 +8,10 @@ dotenv.config();
 runMigrations();
 
 export const client = new Client({
-    intents: [],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+    ],
     allowedMentions: {parse: []},
     presence: {
         activities: [{name: '/tag', type: ActivityType.Listening}],
@@ -22,13 +25,21 @@ client.on('interactionCreate', async (interaction: Interaction) => {
     } else if (interaction.isMessageContextMenuCommand()) {
         await handleMessageContextMenuCommand(interaction).catch(error => {
             console.error(error);
-            interaction.reply({content: 'There was an error while executing this command', ephemeral: true});
+            if (interaction.deferred) {
+                interaction.editReply({content: 'There was an error while executing this command'});
+            } else {
+                interaction.reply({content: 'There was an error while executing this command', ephemeral: true});
+            }
         });
 
     } else if (interaction.isChatInputCommand()) {
         await handleChatCommand(interaction).catch(error => {
             console.error(error);
-            interaction.reply({content: 'There was an error while executing this command', ephemeral: true});
+            if (interaction.deferred) {
+                interaction.editReply({content: 'There was an error while executing this command'});
+            } else {
+                interaction.reply({content: 'There was an error while executing this command', ephemeral: true});
+            }
         });
 
     }
