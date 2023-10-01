@@ -1,5 +1,5 @@
 import {asc, eq, like, sql} from 'drizzle-orm';
-import {db, tagsTable} from './database';
+import {db, tagsTable} from './database.js';
 
 export const getTagPreparedStatement = db
     .select()
