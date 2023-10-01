@@ -1,119 +1,249 @@
-import {ApplicationCommandOptionType, ApplicationCommandType} from "discord.js";
+import {
+    ActionRowBuilder,
+    ApplicationCommandType,
+    Attachment,
+    AutocompleteInteraction,
+    ChatInputCommandInteraction,
+    ContextMenuCommandBuilder, EmbedBuilder,
+    Message,
+    MessageContextMenuCommandInteraction,
+    ModalBuilder,
+    ModalSubmitInteraction,
+    SlashCommandBuilder,
+    SlashCommandStringOption,
+    SlashCommandSubcommandBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+} from 'discord.js';
+import {AttachmentInsertType, attachmentTable, db, tagsTable} from './database.js';
+import {getTagPreparedStatement, listTagsPreparedStatement} from './prepared-statements.js';
+import {distance} from 'fastest-levenshtein';
 
-
-const commandsData = [
-	{
-		name: 'createtag',
-		description: 'Creates a tag',
-		type: ApplicationCommandType.ChatInput,
-		dmPermission: false,
-		options: [
-			{ type: ApplicationCommandOptionType.String, name: 'name', description: 'The name of the tag', required: true },
-			{ type: ApplicationCommandOptionType.String, name: 'content', description: 'The message to return as the output' },
-			{ type: ApplicationCommandOptionType.Attachment, name: 'attachment', description: 'The attachment to return as the output' }
-		]
-	},
-	{
-		name: 'context-menu-create-tag',
-		description: 'Creates a tag from this message',
-		type: ApplicationCommandType.User,
-		dmPermission: false
-	},
-	{
-		name: 'deletetag',
-		description: 'Deletes a tag',
-		dmPermission: false,
-		type: ApplicationCommandType.ChatInput,
-		options: [{ type: ApplicationCommandOptionType.String, name: 'tag', description: 'The tag to delete', autocomplete: true, required: true }]
-	},
-	{
-		name: 'listtags',
-		description: 'Lists all available tags'
-	},
-	{
-		name: 'tag',
-		description: 'Displays a tag',
-		options: [{ type: ApplicationCommandOptionType.String, name: 'tag', description: 'The tag to get information about', autocomplete: true, required: true }]
-	}
+export const commands = [
+    new SlashCommandBuilder()
+        .setName('tag')
+        .setDescription('View, List, Create, Manage tags!')
+        .setDMPermission(false)
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('get')
+                .setDescription('Retrieves a tag and sends it')
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('name')
+                        .setDescription('Name of the tag')
+                        .setRequired(true)
+                        .setAutocomplete(true),
+                ),
+        )
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('create')
+                .setDescription('Create a tag')
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('name')
+                        .setDescription('Name of the tag')
+                        .setRequired(true),
+                )
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('message-id')
+                        .setDescription('Message id of the message you want to create a tag for')
+                        .setRequired(true),
+                ),
+        )
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('list')
+                .setDescription('List all available tags'),
+        )
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('update')
+                .setDescription('Update the tag. Can only update tags created by you.')
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('name')
+                        .setDescription('Name of the tag')
+                        .setRequired(true)
+                        .setAutocomplete(true),
+                )
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('message-id')
+                        .setDescription('Message id of the message you want to update the tag with.')
+                        .setRequired(true),
+                ),
+        )
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('delete')
+                .setDescription('Delete the tag. Can only delete tags created by you.')
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('name')
+                        .setDescription('Name of the tag')
+                        .setRequired(true)
+                        .setAutocomplete(true),
+                ),
+        ),
+    new ContextMenuCommandBuilder()
+        .setName('Create tag')
+        .setType(ApplicationCommandType.Message)
+        .setDMPermission(false),
 ];
 
-client.once('ready', async () => {
-	console.log(`${client.user.tag} is online!`);
+export async function handleAutocomplete(interaction: AutocompleteInteraction) {
+    const focusedValue = interaction.options.getFocused().toLowerCase();
+    const tagNames = listTagsPreparedStatement
+        .all()
+        .flatMap(row => row.name)
+        .map(name => {
+            return {name: name, score: distance(focusedValue, name)};
+        })
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 25)
+        .map(scoredNames => {
+            return {name: scoredNames.name, value: scoredNames.name};
+        });
 
-	client.tags = readTags();
-	await client.application.commands.set(commandsData);
-});
-
-client.on('interactionCreate', async interaction => {
-	if (interaction.isAutocomplete()) {
-		await handleAutocomplete(interaction).catch(console.error);
-	} else if (interaction.isCommand()) {
-		await handleCommand(interaction).catch(error => {
-			console.error(error);
-			interaction.reply({ content: 'There was an error while executing this command', ephemeral: true });
-		});
-	}
-});
-
-async function handleAutocomplete(interaction) {
-	if (interaction.commandName === 'tag' || interaction.commandName == 'deletetag') {
-		const focusedValue = interaction.options.getFocused().toLowerCase();
-		await interaction.respond(
-			Object.keys(interaction.client.tags)
-				.filter(option => option.toLowerCase().includes(focusedValue))
-				.sort((a, b) => a.localeCompare(b, { sensitivity: 'base' }))
-				.sort((optionA, optionB) => optionB.toLowerCase().startsWith(focusedValue) - optionA.toLowerCase().startsWith(focusedValue))
-				.slice(0, 25)
-				.map(option => ({ name: option, value: option }))
-		);
-	}
+    await interaction.respond(tagNames);
 }
 
-async function handleCommand(interaction) {
-	if (interaction.commandName == 'tag') {
-		const name = interaction.options.getString('tag');
-		const tags = readTags();
-		const tag = Object.keys(tags).find(key => key.toLowerCase() == name.toLowerCase());
-		if (!tag) {
-			return await interaction.reply({ content: "That tag doesn't exist", ephemeral: true });
-		}
+export async function handleMessageContextMenuCommand(intr: MessageContextMenuCommandInteraction) {
+    const modalID = 'tag-name-modal-' + Number(intr.id).toString(36).slice(-8);
 
-		const { content, attachments } = tags[tag];
-		await interaction.reply({ content, files: attachments ? attachments : undefined });
-	} else if (interaction.commandName == 'createtag') {
-		const name = interaction.options.getString('name');
-		const content = interaction.options.getString('content');
-		const attachment = interaction.options.getAttachment('attachment');
+    const inputComponent = new TextInputBuilder()
+        .setCustomId('tag-name-modal-input')
+        .setLabel('Tag Name')
+        .setStyle(TextInputStyle.Short)
+        .setMinLength(3);
 
-		if (!content && !attachment) {
-			return await interaction.reply({ content: 'You have to provide either a message or an attachment', ephemeral: true });
-		}
+    const inputActionRow = new ActionRowBuilder<TextInputBuilder>()
+        .addComponents(inputComponent);
 
-		const tags = readTags();
-		const tag = Object.keys(tags).find(key => key.toLowerCase() == name.toLowerCase());
-		if (tag) {
-			return await interaction.reply({ content: 'A tag with that name already exists', ephemeral: true });
-		}
+    const modal = new ModalBuilder()
+        .setCustomId(modalID)
+        .setTitle('Create tag')
+        .addComponents(inputActionRow);
 
-		tags[name] = { content, attachments: attachment && [attachment?.url] };
-		interaction.client.tags = tags;
-		writeTags(tags);
-		await interaction.reply(`Succesfully created the ${name} tag`);
-	} else if (interaction.commandName == 'deletetag') {
-		const name = interaction.options.getString('tag');
+    const modalFilter = async (mi: ModalSubmitInteraction) => {
+        await mi.deferReply({ephemeral: true});
+        return mi.customId === modalID;
+    };
 
-		const tags = readTags();
-		const tag = Object.keys(tags).find(key => key.toLowerCase() == name.toLowerCase());
-		if (!tag) {
-			return await interaction.reply({ content: "That tag doesn't exist", ephemeral: true });
-		}
+    await intr.showModal(modal);
 
-		delete tags[tag];
-		interaction.client.tags = tags;
-		writeTags(tags);
-		await interaction.reply(`Succesfully deleted the ${tag} tag`);
-	} else if (interaction.commandName == 'listtags') {
-		const tagNames = Object.keys(readTags());
-		await interaction.reply(tagNames.length > 0 ? `Available tags: ${tagNames.sort((a, b) => a.localeCompare(b, { sensitivity: 'base' })).join(', ')}` : 'No tags exist');
-	}
+    const modalIntr = await intr.awaitModalSubmit({time: 10_000, filter: modalFilter});
+    const tagName = modalIntr.components[0].components[0].value;
+
+    await insertTag(modalIntr, tagName, intr.targetMessage);
+}
+
+async function insertTag(
+    interaction: ChatInputCommandInteraction | ModalSubmitInteraction,
+    tagName: string,
+    targetMessage: Message,
+) {
+    await db.transaction(async (tx) => {
+        const insertRes = tx.insert(tagsTable)
+            .values({
+                content: targetMessage.content,
+                tagName: tagName,
+                creatorUsername: interaction.user.username,
+                creatorUserID: interaction.user.id.toString(),
+                authorUsername: targetMessage.author.username,
+                authorUserID: targetMessage.author.id.toString(),
+            })
+            .returning()
+            .onConflictDoNothing({target: tagsTable.tagName})
+            .prepare(true)
+            .all();
+
+        console.log(insertRes);
+
+        if (insertRes.length === 0) {
+            await interaction.editReply(`Tag name: '${tagName}' is already in use. Please choose a different name and try again.`);
+            return;
+        }
+
+        const attachments = targetMessage.attachments;
+
+        if (attachments.size > 0) {
+            const attachmentsRows = attachments.map((attachment: Attachment): AttachmentInsertType => {
+                return {tagID: insertRes[0].tagID, url: attachment.url};
+            });
+
+            const attachMentsRes = tx.insert(attachmentTable)
+                .values(attachmentsRows)
+                .prepare(true)
+                .all();
+
+            console.log(attachMentsRes);
+        }
+
+        await interaction.editReply(`Successfully created tag: '${tagName}'`);
+    });
+
+}
+
+export async function handleChatCommand(interaction: ChatInputCommandInteraction) {
+    const subcommand = interaction.options.getSubcommand();
+    const name = interaction.options.getString('name')?.trim();
+    const messageId = interaction.options.getString('message-id')?.trim();
+
+    if (name == null) {
+        await interaction.reply({
+            ephemeral: true,
+            content: 'Message ID provided is invalid. Please check and try again.',
+        });
+        return;
+    }
+
+    switch (subcommand) {
+        case 'get':
+            const tag = getTagPreparedStatement.get({query: name});
+
+            if (tag == null) {
+                await interaction.reply({
+                    ephemeral: true,
+                    content: 'Tag name provided is invalid. Please check and try again.',
+                });
+                return;
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(tag.tagName)
+                .setDescription(tag.content)
+                .setFooter({
+                    text: `Tag created by ${tag.creatorUsername}`,
+                })
+                .setColor('Greyple');
+
+            await interaction.reply({
+                embeds: [embed],
+            });
+
+            break;
+        case 'create':
+            await interaction.deferReply();
+
+            const message = await interaction.channel?.messages.fetch(messageId!).catch(err => {
+                console.log(interaction.user.username, 'caused', err.message);
+            });
+
+            if (message == null) {
+                await interaction.editReply('Message ID provided is invalid. Please check and try again.');
+                return;
+            }
+            await insertTag(interaction, name, message);
+            break;
+        case 'update':
+            break;
+        case 'delete':
+            break;
+        case 'list':
+            break;
+    }
 }
