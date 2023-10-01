@@ -10,24 +10,24 @@ db.run(sql`
     (
         tag_id           INTEGER PRIMARY KEY AUTOINCREMENT,
         time_created     INTEGER NOT NULL DEFAULT (UNIXEPOCH()),
-        tag_name         TEXT    NOT NULL UNIQUE,
+        tag_name         TEXT    NOT NULL,
         content          TEXT    NOT NULL,
         author_username  TEXT    NOT NULL,
         author_user_id   TEXT    NOT NULL,
         creator_username TEXT    NOT NULL,
-        creator_user_id  TEXT    NOT NULL
+        creator_user_id  TEXT    NOT NULL,
+        guild_id         TEXT    NOT NULL
     );
 `);
 
 export const tagsTable = sqliteTable('tags', {
     tagID: integer('tag_id').primaryKey().notNull(),
-    timeCreated: integer('time_created', {mode: 'timestamp'}).notNull().defaultNow(),
-    tagName: text('tag_name').notNull().unique(),
+    timeCreated: integer('time_created', {mode: 'timestamp'}).notNull().default(sql`(UNIXEPOCH())`),
+    tagName: text('tag_name').notNull(),
     content: text('content').notNull(),
     authorUsername: text('author_username').notNull(),
     authorUserID: text('author_user_id').notNull(),
-    creatorUsername: text('creator_username').notNull(),
-    creatorUserID: text('creator_user_id').notNull(),
+    guildID: text('guild_id').notNull()
 });
 
 export type TagsInsertType = typeof tagsTable.$inferInsert
@@ -37,6 +37,7 @@ db.run(sql`
     CREATE TABLE IF NOT EXISTS attachments
     (
         tag_id INTEGER NOT NULL,
+        name   TEXT    NOT NULL,
         url    TEXT    NOT NULL,
         FOREIGN KEY (tag_id) REFERENCES tags (tag_id)
     );
@@ -44,43 +45,9 @@ db.run(sql`
 
 export const attachmentTable = sqliteTable('attachments', {
     tagID: integer('tag_id').notNull().references(() => tagsTable.tagID),
+    name: text('name').notNull(),
     url: text('url').notNull(),
 });
 
 export type AttachmentInsertType = typeof attachmentTable.$inferInsert
 export type AttachmentSelectType = typeof attachmentTable.$inferSelect
-
-db.run(sql`
-    CREATE TABLE IF NOT EXISTS metadata
-    (
-        migration_version INTEGER NOT NULL
-    );
-`);
-
-const metadataTable = sqliteTable('metadata', {
-    migrationVersion: integer('migration_version').notNull(),
-});
-
-function migrate(newVersion: number, currentVersion: number, updateStatements: () => void) {
-    if (newVersion <= currentVersion)
-        return;
-    db.update(metadataTable).set({migrationVersion: newVersion}).prepare(true).run();
-    updateStatements();
-}
-
-export function runMigrations() {
-    const currentVersion = db
-        .select({version: metadataTable.migrationVersion})
-        .from(metadataTable)
-        .prepare(true)
-        .get()?.version;
-
-    if (currentVersion === undefined) {
-        db.insert(metadataTable).values({migrationVersion: 0}).prepare(true).run();
-    }
-
-    // migrate(1, currentVersion ?? 0, () => {
-    //
-    // });
-}
-

@@ -1,11 +1,8 @@
 import dotenv from 'dotenv';
 import {ActivityType, Client, GatewayIntentBits, Guild, Interaction} from 'discord.js';
 import {commands, handleAutocomplete, handleChatCommand, handleMessageContextMenuCommand} from './commands.js';
-import {runMigrations} from './database.js';
-
 
 dotenv.config();
-runMigrations();
 
 export const client = new Client({
     intents: [
@@ -20,12 +17,12 @@ export const client = new Client({
 
 client.on('interactionCreate', async (interaction: Interaction) => {
     if (interaction.isAutocomplete()) {
-        await handleAutocomplete(interaction).catch(console.error);
+        await handleAutocomplete(interaction).catch(console.log);
 
     } else if (interaction.isMessageContextMenuCommand()) {
         await handleMessageContextMenuCommand(interaction).catch(error => {
-            console.error(error);
-            if (interaction.deferred) {
+            console.log(error);
+            if (interaction.deferred || interaction.replied) {
                 interaction.editReply({content: 'There was an error while executing this command'});
             } else {
                 interaction.reply({content: 'There was an error while executing this command', ephemeral: true});
@@ -34,7 +31,7 @@ client.on('interactionCreate', async (interaction: Interaction) => {
 
     } else if (interaction.isChatInputCommand()) {
         await handleChatCommand(interaction).catch(error => {
-            console.error(error);
+            console.log(error);
             if (interaction.deferred) {
                 interaction.editReply({content: 'There was an error while executing this command'});
             } else {
