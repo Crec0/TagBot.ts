@@ -4,15 +4,12 @@ import {db, tagsTable} from './database.js';
 export const getTagPreparedStatement = db
     .select()
     .from(tagsTable)
-    .where(eq(tagsTable.tagID, sql.placeholder('query')))
+    .where(eq(tagsTable.tagName, sql.placeholder('query')))
     .orderBy(asc(tagsTable.tagName))
     .limit(1)
     .prepare(false);
 
 export const listTagsPreparedStatement = db
-    .select()
+    .select({name: tagsTable.tagName})
     .from(tagsTable)
-    .where(like(tagsTable.creatorUsername, sql.placeholder('query')))
-    .orderBy(asc(tagsTable.tagName))
-    .limit(25)
     .prepare(false);
