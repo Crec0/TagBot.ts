@@ -14,8 +14,6 @@ db.run(sql`
         content          TEXT    NOT NULL,
         author_username  TEXT    NOT NULL,
         author_user_id   TEXT    NOT NULL,
-        creator_username TEXT    NOT NULL,
-        creator_user_id  TEXT    NOT NULL,
         guild_id         TEXT    NOT NULL
     );
 `);
