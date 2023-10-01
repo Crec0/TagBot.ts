@@ -1,35 +1,42 @@
-import fs, { existsSync } from 'fs';
 import dotenv from 'dotenv';
-import { Client, ActivityType, ApplicationCommandType, ApplicationCommandOptionType } from 'discord.js';
+import {ActivityType, Client, Interaction} from 'discord.js';
+import {commands, handleAutocomplete, handleChatCommand, handleMessageContextMenuCommand} from './commands.js';
+import {runMigrations} from './database.js';
 
-function jsonToBase64(object) {
-	const json = JSON.stringify(object);
-	return Buffer.from(json).toString("base64");
-}
-  
-function base64ToJson(base64String) {
-	const json = Buffer.from(base64String, "base64").toString();
-	return JSON.parse(json);
-}
-
-function readTags() {
-	return existsSync('./tags.json') ? JSON.parse(fs.readFileSync('./tags.json')) : {};
-}
-
-function writeTags(tags) {
-	fs.writeFileSync(
-		'./tags.json',
-		JSON.stringify(tags, (key, value) => value ?? undefined, 3)
-	);
-}
-
-export const client = new Client({
-	intents: [],
-	allowedMentions: { parse: [] },
-	presence: {
-		activities: [{ name: '/tag', type: ActivityType.Listening }]
-	}
-});
 
 dotenv.config();
+runMigrations();
+
+export const client = new Client({
+    intents: [],
+    allowedMentions: {parse: []},
+    presence: {
+        activities: [{name: '/tag', type: ActivityType.Listening}],
+    },
+});
+
+client.on('interactionCreate', async (interaction: Interaction) => {
+    if (interaction.isAutocomplete()) {
+        await handleAutocomplete(interaction).catch(console.error);
+
+    } else if (interaction.isMessageContextMenuCommand()) {
+        await handleMessageContextMenuCommand(interaction).catch(error => {
+            console.error(error);
+            interaction.reply({content: 'There was an error while executing this command', ephemeral: true});
+        });
+
+    } else if (interaction.isChatInputCommand()) {
+        await handleChatCommand(interaction).catch(error => {
+            console.error(error);
+            interaction.reply({content: 'There was an error while executing this command', ephemeral: true});
+        });
+
+    }
+});
+
+client.once('ready', async () => {
+    console.log(`${client.user!.tag} is online!`);
+    await client.application!.commands.set(commands);
+});
+
 await client.login(process.env.DISCORD_TOKEN);

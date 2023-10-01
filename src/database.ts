@@ -1,16 +1,86 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+import {integer, sqliteTable, text} from 'drizzle-orm/sqlite-core';
+import {sql} from 'drizzle-orm';
+import {BetterSQLite3Database, drizzle} from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
 
-const users = sqliteTable("users", {
-    id: integer("id").primaryKey(),
-    tagName: text("tag_name"),
-    content: text("content"),
-    createdBy: text("created_by"),
-    timeCreated: datetime("time_created"),
+export const db: BetterSQLite3Database = drizzle(new Database('./tags.db'), {logger: true});
+
+db.run(sql`
+    CREATE TABLE IF NOT EXISTS tags
+    (
+        tag_id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        time_created     INTEGER NOT NULL DEFAULT (UNIXEPOCH()),
+        tag_name         TEXT    NOT NULL UNIQUE,
+        content          TEXT    NOT NULL,
+        author_username  TEXT    NOT NULL,
+        author_user_id   TEXT    NOT NULL,
+        creator_username TEXT    NOT NULL,
+        creator_user_id  TEXT    NOT NULL
+    );
+`);
+
+export const tagsTable = sqliteTable('tags', {
+    tagID: integer('tag_id').primaryKey().notNull(),
+    timeCreated: integer('time_created', {mode: 'timestamp'}).notNull().defaultNow(),
+    tagName: text('tag_name').notNull().unique(),
+    content: text('content').notNull(),
+    authorUsername: text('author_username').notNull(),
+    authorUserID: text('author_user_id').notNull(),
+    creatorUsername: text('creator_username').notNull(),
+    creatorUserID: text('creator_user_id').notNull(),
 });
 
-const sqlite = new Database("sqlite.db");
-const db = drizzle(sqlite);
+export type TagsInsertType = typeof tagsTable.$inferInsert
+export type TagsSelectType = typeof tagsTable.$inferSelect
 
-const allUsers = db.select().from(users).all();
+db.run(sql`
+    CREATE TABLE IF NOT EXISTS attachments
+    (
+        tag_id INTEGER NOT NULL,
+        data   BLOB    NOT NULL,
+        FOREIGN KEY (tag_id) REFERENCES tags (tag_id)
+    );
+`);
+
+export const attachmentTable = sqliteTable('attachments', {
+    tagID: integer('tag_id').notNull().references(() => tagsTable.tagID),
+    url: text('url').notNull(),
+});
+
+export type AttachmentInsertType = typeof attachmentTable.$inferInsert
+export type AttachmentSelectType = typeof attachmentTable.$inferSelect
+
+db.run(sql`
+    CREATE TABLE IF NOT EXISTS metadata
+    (
+        migration_version INTEGER NOT NULL
+    );
+`);
+
+const metadataTable = sqliteTable('metadata', {
+    migrationVersion: integer('migration_version').notNull(),
+});
+
+function migrate(newVersion: number, currentVersion: number, updateStatements: () => void) {
+    if (newVersion <= currentVersion)
+        return;
+    db.update(metadataTable).set({migrationVersion: newVersion}).prepare(true).run();
+    updateStatements();
+}
+
+export function runMigrations() {
+    const currentVersion = db
+        .select({version: metadataTable.migrationVersion})
+        .from(metadataTable)
+        .prepare(true)
+        .get()?.version;
+
+    if (currentVersion === undefined) {
+        db.insert(metadataTable).values({migrationVersion: 0}).prepare(true).run();
+    }
+
+    // migrate(1, currentVersion ?? 0, () => {
+    //
+    // });
+}
+
