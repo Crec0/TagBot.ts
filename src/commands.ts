@@ -97,7 +97,7 @@ export const commands = [
 export async function handleAutocomplete(interaction: AutocompleteInteraction) {
     const focusedValue = interaction.options.getFocused().toLowerCase();
     const tagNames = listTagsPreparedStatement
-        .all()
+        .all({guildId: interaction.guild!.id})
         .flatMap(row => row.name)
         .map(name => {
             return {name: name, score: distance(focusedValue, name)};
@@ -151,10 +151,9 @@ async function insertTag(
             .values({
                 content: targetMessage.content,
                 tagName: tagName,
-                creatorUsername: interaction.user.username,
-                creatorUserID: interaction.user.id.toString(),
-                authorUsername: targetMessage.author.username,
-                authorUserID: targetMessage.author.id.toString(),
+                authorUsername: interaction.user.username,
+                authorUserID: interaction.user.id.toString(),
+                guildID: interaction.guild!.id,
             })
             .returning()
             .onConflictDoNothing({target: tagsTable.tagName})
@@ -172,15 +171,15 @@ async function insertTag(
 
         if (attachments.size > 0) {
             const attachmentsRows = attachments.map((attachment: Attachment): AttachmentInsertType => {
-                return {tagID: insertRes[0].tagID, url: attachment.url};
+                return {tagID: insertRes[0].tagID, name: attachment.name, url: attachment.url};
             });
 
-            const attachMentsRes = tx.insert(attachmentTable)
+            const attachmentsRes = tx.insert(attachmentTable)
                 .values(attachmentsRows)
                 .prepare(true)
-                .all();
+                .run();
 
-            console.log(attachMentsRes);
+            console.log(attachmentsRes);
         }
 
         await interaction.editReply(`Successfully created tag: '${tagName}'`);
