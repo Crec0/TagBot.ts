@@ -12,7 +12,7 @@ export const getTagPreparedStatement = db
 export const listTagsPreparedStatement = db
     .select( { name: tagsTable.tagName, id: tagsTable.tagID } )
     .from( tagsTable )
-    .where( eq( tagsTable.guildID, sql.placeholder( 'guild_id' ) ) )
+    // .where( eq( tagsTable.guildID, sql.placeholder( 'guild_id' ) ) ) // Removed for now. Can be enabled later.
     .prepare( false );
 
 export const getAttachmentsPreparedStatement = db

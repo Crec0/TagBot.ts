@@ -156,6 +156,8 @@ async function insertTag(
             .values( {
                 content: targetMessage.content,
                 tagName: tagName,
+                originalUsername: targetMessage.author.username,
+                originalUserID: targetMessage.author.id.toString(),
                 authorUsername: interaction.user.username,
                 authorUserID: interaction.user.id.toString(),
                 guildID: interaction.guild!.id,
@@ -228,7 +230,7 @@ export async function handleChatCommand( interaction: ChatInputCommandInteractio
             .setTitle( tag.tagName )
             .setDescription( tag.content )
             .setFooter( {
-                text: `Tag created by ${ tag.authorUsername }`,
+                text: `Tag by ${ tag.authorUsername } | Original message by ${ tag.originalUsername }`,
             } )
             .setColor( '#e77f67' );
 

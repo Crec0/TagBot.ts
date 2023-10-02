@@ -9,13 +9,15 @@ export const db: BetterSQLite3Database = drizzle( new Database( './tags.db' ), {
 db.run( sql`
     CREATE TABLE IF NOT EXISTS tags
     (
-        tag_id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        time_created    INTEGER NOT NULL DEFAULT (UNIXEPOCH()),
-        tag_name        TEXT    NOT NULL,
-        content         TEXT    NOT NULL,
-        author_username TEXT    NOT NULL,
-        author_user_id  TEXT    NOT NULL,
-        guild_id        TEXT    NOT NULL
+        tag_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        time_created      INTEGER NOT NULL DEFAULT (UNIXEPOCH()),
+        tag_name          TEXT    NOT NULL,
+        content           TEXT    NOT NULL,
+        author_username   TEXT    NOT NULL,
+        author_user_id    TEXT    NOT NULL,
+        original_username TEXT    NOT NULL,
+        original_user_id  TEXT    NOT NULL,
+        guild_id          TEXT    NOT NULL
     );
 ` );
 
@@ -26,6 +28,8 @@ export const tagsTable = sqliteTable( 'tags', {
     content: text( 'content' ).notNull(),
     authorUsername: text( 'author_username' ).notNull(),
     authorUserID: text( 'author_user_id' ).notNull(),
+    originalUsername: text( 'original_username' ).notNull(),
+    originalUserID: text( 'original_user_id' ).notNull(),
     guildID: text( 'guild_id' ).notNull(),
 } );
 
