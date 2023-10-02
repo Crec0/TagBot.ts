@@ -10,6 +10,7 @@ import {
     MessageContextMenuCommandInteraction,
     ModalBuilder,
     ModalSubmitInteraction,
+    PermissionsBitField, SlashCommandBooleanOption,
     SlashCommandBuilder,
     SlashCommandStringOption,
     SlashCommandSubcommandBuilder,
@@ -23,6 +24,7 @@ import {
     listTagsPreparedStatement,
 } from './prepared-statements.js';
 import { distance } from 'fastest-levenshtein';
+import { eq } from 'drizzle-orm';
 
 
 export const commands = [
@@ -40,6 +42,11 @@ export const commands = [
                         .setDescription('Name of the tag')
                         .setRequired(true)
                         .setAutocomplete(true),
+                )
+                .addBooleanOption(
+                    new SlashCommandBooleanOption()
+                        .setName('ephemeral')
+                        .setDescription('Should the reply be ephemeral'),
                 ),
         )
         .addSubcommand(
@@ -105,7 +112,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction) {
     const tagNames = listTagsPreparedStatement
         .all({ guild_id: interaction.guild!.id })
         .flatMap(tag => {
-            return { name: tag.name, score: distance(focusedValue, tag.name), id: tag.id };
+            return { name: tag.tagName, score: distance(focusedValue, tag.tagName), id: tag.tagID };
         })
         .sort((a, b) => a.score - b.score)
         .slice(0, 25)
@@ -193,85 +200,148 @@ async function insertTag(
     await interaction.editReply(`Successfully created tag: '${ tagName }'`);
 }
 
+async function handleGetTag(interaction: ChatInputCommandInteraction, name: string) {
+    const isEphemeral = interaction.options.getBoolean('ephemeral') ?? false;
+    const tag = getTagPreparedStatement.get({ tag_id: name });
+
+    if ( tag == null ) {
+        await interaction.reply({
+            ephemeral: true,
+            content: 'Tag name provided is invalid. Please check and try again.',
+        });
+        return;
+    }
+
+    const attachments = getAttachmentsPreparedStatement.all({ tag_id: tag.tagID });
+    const mainEmbed = new EmbedBuilder()
+        .setTitle(tag.tagName)
+        .setDescription(tag.content)
+        .setFooter({
+            text: `Tag by ${ tag.authorUsername } | Original message by ${ tag.originalUsername }`,
+        })
+        .setColor('#e77f67');
+    const embeds = [ mainEmbed ];
+
+    if ( attachments.length > 0 ) {
+        const attachmentsEmbedDescription: string[] = [];
+        let imageSetFlag = false;
+
+        for ( const attachment of attachments ) {
+            if ( !imageSetFlag && attachment.type?.includes('image') ) {
+                mainEmbed.setImage(attachment.url);
+                imageSetFlag = true;
+            } else {
+                attachmentsEmbedDescription.push(`[${ attachment.name }](${ attachment.url })`);
+            }
+        }
+        if ( attachmentsEmbedDescription.length > 0 ) {
+            const attachmentEmbed = new EmbedBuilder()
+                .setDescription(attachmentsEmbedDescription.join('\n'))
+                .setColor('#82ccdd');
+
+            embeds.push(attachmentEmbed);
+        }
+    }
+
+    await interaction.reply({ embeds: embeds, ephemeral: isEphemeral });
+}
+
+async function handleCreateTag(interaction: ChatInputCommandInteraction, name: string, messageId: string) {
+    await interaction.deferReply();
+    const message = await interaction.channel?.messages.fetch(messageId).catch(err => {
+        console.log(interaction.user.username, 'caused', err.message);
+    });
+    if ( message == null ) {
+        await interaction.editReply('Message ID provided is invalid. Please check and try again.');
+        return;
+    }
+    await insertTag(interaction, name, message);
+}
+
+async function handleDeleteTag(interaction: ChatInputCommandInteraction, name: string) {
+    const tag = getTagPreparedStatement.get({ tag_id: name });
+
+    if ( tag == null ) {
+        await interaction.reply({
+            ephemeral: true,
+            content: 'Tag name provided is invalid. Please check and try again.',
+        });
+        return;
+    }
+
+    if ( interaction.user.id !== tag.authorUserID || !interaction.memberPermissions!.has(PermissionsBitField.Flags.Administrator) ) {
+        await interaction.reply({
+            ephemeral: true,
+            content: 'You are not the author of the tag.',
+        });
+        return;
+    }
+
+    db.delete(attachmentTable)
+        .where(eq(attachmentTable.tagID, tag.tagID))
+        .prepare(true)
+        .run();
+
+    db.delete(tagsTable)
+        .where(eq(tagsTable.tagID, tag.tagID))
+        .prepare(true)
+        .run();
+
+    await interaction.reply({
+        ephemeral: true,
+        content: `Tag ${ tag.tagName } successfully deleted.`,
+    });
+}
+
+
+async function handleListTag(interaction: ChatInputCommandInteraction) {
+    const tags = listTagsPreparedStatement.all({ guild_id: interaction.guild!.id });
+
+    const descriptionLines: string[] = [];
+    for ( const tag of tags ) {
+        descriptionLines.push(
+            `- ${ tag.tagName }, created by ${ tag.authorUsername }`,
+        );
+    }
+
+    const embed = new EmbedBuilder()
+        .setColor('#ffcccc')
+        .setTitle('Tags');
+
+    if ( descriptionLines.length > 0 ) {
+        embed.setDescription(descriptionLines.join('\n'));
+    } else {
+        embed.setDescription(':cricket: No tags :cricket:');
+    }
+
+    await interaction.reply({
+        embeds: [ embed ],
+    });
+}
+
 export async function handleChatCommand(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
     const name = interaction.options.getString('name')?.trim();
     const messageId = interaction.options.getString('message-id')?.trim();
 
-    if ( name == null ) {
-        await interaction.reply({
-            ephemeral: true,
-            content: 'Name provided is invalid. Please check and try again.',
-        });
-        return;
-    }
-
     switch ( subcommand ) {
     case 'get':
-        const tag = getTagPreparedStatement.get({ tag_id: name });
-        if ( tag == null ) {
-            await interaction.reply({
-                ephemeral: true,
-                content: 'Tag name provided is invalid. Please check and try again.',
-            });
-            return;
-        }
-
-        const attachments = getAttachmentsPreparedStatement.all({ tag_id: tag.tagID });
-        const mainEmbed = new EmbedBuilder()
-            .setTitle(tag.tagName)
-            .setDescription(tag.content)
-            .setFooter({
-                text: `Tag by ${ tag.authorUsername } | Original message by ${ tag.originalUsername }`,
-            })
-            .setColor('#e77f67');
-
-        const embeds = [ mainEmbed ];
-
-        if ( attachments.length > 0 ) {
-            const attachmentsEmbedDescription: string[] = [];
-            let imageSetFlag = false;
-
-            for ( const attachment of attachments ) {
-                if ( !imageSetFlag && attachment.type?.includes('image') ) {
-                    mainEmbed.setImage(attachment.url);
-                    imageSetFlag = true;
-                } else {
-                    attachmentsEmbedDescription.push(`[${ attachment.name }](${ attachment.url })`);
-                }
-            }
-            if ( attachmentsEmbedDescription.length > 0 ) {
-                const attachmentEmbed = new EmbedBuilder()
-                    .setDescription(attachmentsEmbedDescription.join('\n'))
-                    .setColor('#82ccdd');
-
-                embeds.push(attachmentEmbed);
-            }
-        }
-
-        await interaction.reply({ embeds: embeds });
+        await handleGetTag(interaction, name!);
         break;
 
     case 'create':
-        await interaction.deferReply();
-        const message = await interaction.channel?.messages.fetch(messageId!).catch(err => {
-            console.log(interaction.user.username, 'caused', err.message);
-        });
-        if ( message == null ) {
-            await interaction.editReply('Message ID provided is invalid. Please check and try again.');
-            return;
-        }
-        await insertTag(interaction, name, message);
+        await handleCreateTag(interaction, name!, messageId!);
         break;
 
     case 'update':
-
         break;
 
     case 'delete':
+        await handleDeleteTag(interaction, name!);
         break;
 
     case 'list':
+        await handleListTag(interaction);
         break;
     }
 }
