@@ -37,6 +37,7 @@ db.run(sql`
         tag_id INTEGER NOT NULL,
         name   TEXT    NOT NULL,
         url    TEXT    NOT NULL,
+        type   TEXT,
         FOREIGN KEY (tag_id) REFERENCES tags (tag_id)
     );
 `);
@@ -45,6 +46,7 @@ export const attachmentTable = sqliteTable('attachments', {
     tagID: integer('tag_id').notNull().references(() => tagsTable.tagID),
     name: text('name').notNull(),
     url: text('url').notNull(),
+    type: text('type'),
 });
 
 export type AttachmentInsertType = typeof attachmentTable.$inferInsert
