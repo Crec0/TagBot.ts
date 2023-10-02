@@ -140,10 +140,12 @@ export async function handleMessageContextMenuCommand(intr: MessageContextMenuCo
 
     await intr.showModal(modal);
 
-    const modalIntr = await intr.awaitModalSubmit({ time: 10_000, filter: modalFilter });
-    const tagName = modalIntr.components[0].components[0].value;
-
-    await insertTag(modalIntr, tagName, intr.targetMessage);
+    intr.awaitModalSubmit({ time: 10_000, filter: modalFilter })
+        .then(async (modalIntr) => {
+            const tagName = modalIntr.components[0].components[0].value;
+            await insertTag(modalIntr, tagName, intr.targetMessage);
+        })
+        .catch(console.error);
 }
 
 async function insertTag(
@@ -196,7 +198,6 @@ async function insertTag(
 
         await interaction.editReply(`Successfully created tag: '${ tagName }'`);
     });
-
 }
 
 export async function handleChatCommand(interaction: ChatInputCommandInteraction) {
@@ -207,7 +208,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
     if ( name == null ) {
         await interaction.reply({
             ephemeral: true,
-            content: 'Message ID provided is invalid. Please check and try again.',
+            content: 'Name provided is invalid. Please check and try again.',
         });
         return;
     }
@@ -215,7 +216,6 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
     switch ( subcommand ) {
     case 'get':
         const tag = getTagPreparedStatement.get({ tag_id: name });
-
         if ( tag == null ) {
             await interaction.reply({
                 ephemeral: true,
@@ -225,7 +225,6 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
         }
 
         const attachments = getAttachmentsPreparedStatement.all({ tag_id: tag.tagID });
-
         const mainEmbed = new EmbedBuilder()
             .setTitle(tag.tagName)
             .setDescription(tag.content)
@@ -259,23 +258,26 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
 
         await interaction.reply({ embeds: embeds });
         break;
+
     case 'create':
         await interaction.deferReply();
-
         const message = await interaction.channel?.messages.fetch(messageId!).catch(err => {
             console.log(interaction.user.username, 'caused', err.message);
         });
-
         if ( message == null ) {
             await interaction.editReply('Message ID provided is invalid. Please check and try again.');
             return;
         }
         await insertTag(interaction, name, message);
         break;
+
     case 'update':
+
         break;
+
     case 'delete':
         break;
+
     case 'list':
         break;
     }

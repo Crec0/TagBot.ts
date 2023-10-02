@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { ActivityType, Client, GatewayIntentBits, Guild, Interaction } from 'discord.js';
+import { ActivityType, Client, GatewayIntentBits, Interaction } from 'discord.js';
 import { commands, handleAutocomplete, handleChatCommand, handleMessageContextMenuCommand } from './commands.js';
 
 
