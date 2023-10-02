@@ -153,51 +153,44 @@ async function insertTag(
     tagName: string,
     targetMessage: Message,
 ) {
-    await db.transaction(async (tx) => {
-        const insertRes = tx.insert(tagsTable)
-            .values({
-                content: targetMessage.content,
-                tagName: tagName,
-                originalUsername: targetMessage.author.username,
-                originalUserID: targetMessage.author.id.toString(),
-                authorUsername: interaction.user.username,
-                authorUserID: interaction.user.id.toString(),
-                guildID: interaction.guild!.id,
-            })
-            .returning()
+    const insertRes = db.insert(tagsTable)
+        .values({
+            content: targetMessage.content,
+            tagName: tagName,
+            originalUsername: targetMessage.author.username,
+            originalUserID: targetMessage.author.id.toString(),
+            authorUsername: interaction.user.username,
+            authorUserID: interaction.user.id.toString(),
+            guildID: interaction.guild!.id,
+        })
+        .returning()
+        .prepare(true)
+        .all();
+
+    if ( insertRes.length === 0 ) {
+        await interaction.editReply(`Tag name: '${ tagName }' is already in use. Please choose a different name and try again.`);
+        return;
+    }
+
+    const attachments = targetMessage.attachments;
+
+    if ( attachments.size > 0 ) {
+        const attachmentsRows = attachments.map((attachment: Attachment): AttachmentInsertType => {
+            return {
+                tagID: insertRes[0].tagID,
+                name: attachment.name,
+                url: attachment.url,
+                type: attachment.contentType,
+            };
+        });
+
+        db.insert(attachmentTable)
+            .values(attachmentsRows)
             .prepare(true)
-            .all();
+            .run();
+    }
 
-        console.log(insertRes);
-
-        if ( insertRes.length === 0 ) {
-            await interaction.editReply(`Tag name: '${ tagName }' is already in use. Please choose a different name and try again.`);
-            return;
-        }
-
-        const attachments = targetMessage.attachments;
-
-
-        if ( attachments.size > 0 ) {
-            const attachmentsRows = attachments.map((attachment: Attachment): AttachmentInsertType => {
-                return {
-                    tagID: insertRes[0].tagID,
-                    name: attachment.name,
-                    url: attachment.url,
-                    type: attachment.contentType,
-                };
-            });
-
-            const attachmentsRes = tx.insert(attachmentTable)
-                .values(attachmentsRows)
-                .prepare(true)
-                .run();
-
-            console.log(attachmentsRes);
-        }
-
-        await interaction.editReply(`Successfully created tag: '${ tagName }'`);
-    });
+    await interaction.editReply(`Successfully created tag: '${ tagName }'`);
 }
 
 export async function handleChatCommand(interaction: ChatInputCommandInteraction) {
