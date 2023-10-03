@@ -35,9 +35,12 @@ export async function handleListTag(interaction: ChatInputCommandInteraction) {
         );
     }
 
+    const titlePrefix = username == null && isUnclaimed ? 'Unclaimed' : 'All';
+    const titleSuffix = username != null ? ` owned by ${ username }` : '';
+
     const embed = new EmbedBuilder()
         .setColor('#ffcccc')
-        .setTitle('Tags');
+        .setTitle(`${ titlePrefix } tags${ titleSuffix }`);
 
     if ( descriptionLines.length > 0 ) {
         embed.setDescription(descriptionLines.join('\n'));
