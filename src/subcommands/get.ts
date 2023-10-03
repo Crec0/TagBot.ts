@@ -1,8 +1,9 @@
-import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, userMention } from 'discord.js';
 import { getAttachmentsPreparedStatement, getTagPreparedStatement } from '../prepared-statements.js';
 
 
 export async function handleGetTag(interaction: ChatInputCommandInteraction, name: string) {
+    const targetUserId = interaction.options.getUser('target')?.id;
     const isEphemeral = interaction.options.getBoolean('ephemeral') ?? false;
     const tag = getTagPreparedStatement.get({ tag_id: name });
 
@@ -22,6 +23,7 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
             text: `Tag by ${ tag.ownerUsername } }`,
         })
         .setColor('#e77f67');
+
     const embeds = [ mainEmbed ];
 
     if ( attachments.length > 0 ) {
@@ -45,5 +47,10 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
         }
     }
 
-    await interaction.reply({ embeds: embeds, ephemeral: isEphemeral });
+    await interaction.reply({
+        embeds: embeds,
+        ephemeral: isEphemeral,
+        content: targetUserId != null ? userMention(targetUserId) : '',
+        allowedMentions: targetUserId != null  ? { users: [ targetUserId ] } : {},
+    });
 }

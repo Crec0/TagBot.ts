@@ -40,6 +40,11 @@ export const commands = [
                         .setRequired(true)
                         .setAutocomplete(true),
                 )
+                .addUserOption(
+                    new SlashCommandUserOption()
+                        .setName('target')
+                        .setDescription('User to ping on response. ephemeral option is ignored, if provided'),
+                )
                 .addBooleanOption(
                     new SlashCommandBooleanOption()
                         .setName('ephemeral')
