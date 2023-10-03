@@ -21,7 +21,7 @@ export async function handleListTag(interaction: ChatInputCommandInteraction) {
 
     for ( const tag of tags ) {
         descriptionLines.push(
-            `${ count }. **${ tag.tagName }**, id: ${ tag.tagID }, *by ${ tag.authorUsername }*`,
+            `0. **${ tag.tagName }**, id: ${ tag.tagID }, owned by ${ tag.ownerUsername }`,
         );
     }
 

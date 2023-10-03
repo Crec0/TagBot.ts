@@ -1,5 +1,5 @@
 import { Attachment, ChatInputCommandInteraction, Message, ModalSubmitInteraction } from 'discord.js';
-import { AttachmentInsertType, attachmentTable, db, tagsTable } from '../database.js';
+import { attachmentTable, db, tagsTable } from '../database.js';
 
 
 export async function insertTag(
@@ -11,10 +11,8 @@ export async function insertTag(
         .values({
             content: targetMessage.content,
             tagName: tagName,
-            originalUsername: targetMessage.author.username,
-            originalUserID: targetMessage.author.id.toString(),
-            authorUsername: interaction.user.username,
-            authorUserID: interaction.user.id.toString(),
+            ownerUsername: interaction.user.username,
+            ownerUserID: interaction.user.id.toString(),
             guildID: interaction.guild!.id,
         })
         .returning()
@@ -29,7 +27,7 @@ export async function insertTag(
     const attachments = targetMessage.attachments;
 
     if ( attachments.size > 0 ) {
-        const attachmentsRows = attachments.map((attachment: Attachment): AttachmentInsertType => {
+        const attachmentsRows = attachments.map((attachment: Attachment): typeof attachmentTable.$inferInsert => {
             return {
                 tagID: insertRes[0].tagID,
                 name: attachment.name,

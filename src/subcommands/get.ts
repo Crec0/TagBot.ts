@@ -19,7 +19,7 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
         .setTitle(tag.tagName)
         .setDescription(tag.content)
         .setFooter({
-            text: `Tag by ${ tag.authorUsername } | Original message by ${ tag.originalUsername }`,
+            text: `Tag by ${ tag.ownerUsername } }`,
         })
         .setColor('#e77f67');
     const embeds = [ mainEmbed ];

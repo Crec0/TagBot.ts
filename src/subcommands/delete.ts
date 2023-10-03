@@ -15,10 +15,10 @@ export async function handleDeleteTag(interaction: ChatInputCommandInteraction, 
         return;
     }
 
-    if ( interaction.user.id !== tag.authorUserID || !interaction.memberPermissions!.has(PermissionsBitField.Flags.Administrator) ) {
+    if ( interaction.user.id !== tag.ownerUserID || !interaction.memberPermissions!.has(PermissionsBitField.Flags.Administrator) ) {
         await interaction.reply({
             ephemeral: true,
-            content: 'You are not the author of the tag.',
+            content: 'You are not the owner of the tag.',
         });
         return;
     }

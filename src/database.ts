@@ -9,15 +9,13 @@ export const db: BetterSQLite3Database = drizzle( new Database( './tags.db' ), {
 db.run( sql`
     CREATE TABLE IF NOT EXISTS tags
     (
-        tag_id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        time_created      INTEGER NOT NULL DEFAULT (UNIXEPOCH()),
-        tag_name          TEXT    NOT NULL,
-        content           TEXT    NOT NULL,
-        author_username   TEXT    NOT NULL,
-        author_user_id    TEXT    NOT NULL,
-        original_username TEXT    NOT NULL,
-        original_user_id  TEXT    NOT NULL,
-        guild_id          TEXT    NOT NULL
+        tag_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        time_created    INTEGER NOT NULL DEFAULT (UNIXEPOCH()),
+        tag_name        TEXT    NOT NULL,
+        content         TEXT    NOT NULL,
+        guild_id        TEXT    NOT NULL,
+        owner_username TEXT,
+        owner_user_id  TEXT
     );
 ` );
 
@@ -26,15 +24,10 @@ export const tagsTable = sqliteTable( 'tags', {
     timeCreated: integer( 'time_created', { mode: 'timestamp' } ).notNull().default( sql`(UNIXEPOCH())` ),
     tagName: text( 'tag_name' ).notNull(),
     content: text( 'content' ).notNull(),
-    authorUsername: text( 'author_username' ).notNull(),
-    authorUserID: text( 'author_user_id' ).notNull(),
-    originalUsername: text( 'original_username' ).notNull(),
-    originalUserID: text( 'original_user_id' ).notNull(),
     guildID: text( 'guild_id' ).notNull(),
+    ownerUsername: text( 'owner_username' ),
+    ownerUserID: text( 'owner_user_id' ),
 } );
-
-export type TagsInsertType = typeof tagsTable.$inferInsert
-export type TagsSelectType = typeof tagsTable.$inferSelect
 
 db.run( sql`
     CREATE TABLE IF NOT EXISTS attachments
@@ -53,6 +46,3 @@ export const attachmentTable = sqliteTable( 'attachments', {
     url: text( 'url' ).notNull(),
     type: text( 'type' ),
 } );
-
-export type AttachmentInsertType = typeof attachmentTable.$inferInsert
-export type AttachmentSelectType = typeof attachmentTable.$inferSelect
