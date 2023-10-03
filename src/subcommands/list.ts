@@ -1,23 +1,33 @@
 import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { db, tagsTable } from '../database.js';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 
 export async function handleListTag(interaction: ChatInputCommandInteraction) {
+    const conditions = [
+        eq(tagsTable.guildID, sql.placeholder('guild_id')),
+    ];
+
+    const username = interaction.options.getUser('user')?.username;
+    const isUnclaimed = interaction.options.getBoolean('is-unclaimed') ?? false;
+
+    if ( username != null ) {
+        conditions.push(eq(tagsTable.ownerUsername, sql.placeholder('username')));
+    } else if ( isUnclaimed ) {
+        conditions.push(isNull(tagsTable.ownerUsername));
+    }
+
     const tags = db
         .select()
         .from(tagsTable)
-        .where(
-            and(
-                eq(tagsTable.guildID, sql.placeholder('guild_id')),
-            ),
-        )
+        .where(and(...conditions))
         .prepare(false)
-        .all({ guild_id: interaction.guild!.id });
+        .all({
+            guild_id: interaction.guild!.id,
+            username: username,
+        });
 
     const descriptionLines: string[] = [];
-
-    let count = 0;
 
     for ( const tag of tags ) {
         descriptionLines.push(

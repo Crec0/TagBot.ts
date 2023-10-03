@@ -66,7 +66,17 @@ export const commands = [
         .addSubcommand(
             new SlashCommandSubcommandBuilder()
                 .setName('list')
-                .setDescription('List all available tags'),
+                .setDescription('List all available tags')
+                .addUserOption(
+                    new SlashCommandUserOption()
+                        .setName('user')
+                        .setDescription('Only display tags owned by this user'),
+                )
+                .addBooleanOption(
+                    new SlashCommandBooleanOption()
+                        .setName('is-unclaimed')
+                        .setDescription('Only display tags unclaimed tags'),
+                ),
         )
         .addSubcommand(
             new SlashCommandSubcommandBuilder()
