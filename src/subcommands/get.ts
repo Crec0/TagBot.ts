@@ -20,7 +20,7 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
         .setTitle(tag.tagName)
         .setDescription(tag.content)
         .setFooter({
-            text: `Tag by ${ tag.ownerUsername } }`,
+            text: `Tag by ${ tag.ownerUsername }`,
         })
         .setColor('#e77f67');
 
