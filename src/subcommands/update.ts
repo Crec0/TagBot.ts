@@ -1,25 +1,59 @@
-import { ChatInputCommandInteraction } from 'discord.js';
-import { db, tagsTable } from '../database.js';
-import { eq, sql } from 'drizzle-orm';
+import { Attachment, ChatInputCommandInteraction, Message, PermissionsBitField } from 'discord.js';
+import { getTagPreparedStatement } from '../prepared-statements.js';
+import { attachmentTable, db, tagsTable } from '../database.js';
+import { eq } from 'drizzle-orm';
 
 
-export async function handleUpdateTag(interaction: ChatInputCommandInteraction, tagName: string, messageId: string) {
-    await interaction.deferReply();
+export async function handleUpdateTag(interaction: ChatInputCommandInteraction, tagID: string, message: Message) {
+    const tag = getTagPreparedStatement.get({ tag_id: tagID });
 
-    const tag = db
-        .select()
-        .from(tagsTable)
-        .where(eq(tagsTable.tagName, sql.placeholder('tag_id')))
-        .limit(1)
-        .prepare(false);
+    console.log(message)
 
-    const message = await interaction.channel?.messages.fetch(messageId).catch(err => {
-        console.log(interaction.user.username, 'caused', err.message);
-    });
-    if ( message == null ) {
-        await interaction.editReply('Message ID provided is invalid. Please check and try again.');
+    if ( tag == null ) {
+        await interaction.editReply({
+            content: 'Tag name provided is invalid. Please check and try again.',
+        });
         return;
     }
 
-    await interaction.editReply(`Successfully created tag: '${ tagName }'`);
+    if ( interaction.user.id !== tag.ownerUserID || !interaction.memberPermissions!.has(PermissionsBitField.Flags.Administrator) ) {
+        await interaction.editReply({
+            content: 'You are not the owner of the tag.',
+        });
+        return;
+    }
+
+    db.update(tagsTable)
+        .set({
+            content: message.content,
+            ownerUsername: interaction.user.username,
+            ownerUserID: interaction.user.id,
+        })
+        .where(eq(tagsTable.tagID, tag.tagID))
+        .prepare(true)
+        .run();
+
+    db.delete(attachmentTable)
+        .where(eq(attachmentTable.tagID, tag.tagID))
+        .prepare(true)
+        .run();
+
+    if ( message.attachments.size > 0 ) {
+        const attachmentsRows = message.attachments
+            .map((attachment: Attachment): typeof attachmentTable.$inferInsert => {
+                return {
+                    tagID: tag.tagID,
+                    name: attachment.name,
+                    url: attachment.url,
+                    type: attachment.contentType,
+                };
+            });
+
+        db.insert(attachmentTable)
+            .values(attachmentsRows)
+            .prepare(true)
+            .run();
+    }
+
+    await interaction.editReply(`Successfully updated tag: '${ tag.tagName }'`);
 }

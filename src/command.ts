@@ -135,6 +135,23 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction) {
     await interaction.respond(tagNames);
 }
 
+async function fetchMessageOrThrow(interaction: ChatInputCommandInteraction): Promise<Message> {
+    const messageId = interaction.options.getString('message-id')!.trim();
+
+    let message = null;
+    try {
+        message = await interaction.channel?.messages.fetch(messageId);
+    } catch ( e ) {
+        console.error(e)
+    }
+
+    if ( message == null ) {
+        throw Error('Message ID provided is invalid. Please check and try again.');
+    }
+
+    return message;
+}
+
 export async function handleChatCommand(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
     const name = interaction.options.getString('name')?.trim();
@@ -146,11 +163,15 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
         break;
 
     case 'create':
-        await handleCreateTag(interaction, name!, messageId!);
+        await interaction.deferReply({ ephemeral: true });
+        const insertMessage = await fetchMessageOrThrow(interaction);
+        await handleCreateTag(interaction, name!, insertMessage!);
         break;
 
     case 'update':
-        await handleUpdateTag(interaction, name!, messageId!);
+        await interaction.deferReply({ ephemeral: true });
+        const updateMessage = await fetchMessageOrThrow(interaction);
+        await handleUpdateTag(interaction, name!, updateMessage!);
         break;
 
     case 'delete':

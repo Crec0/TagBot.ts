@@ -2,7 +2,7 @@ import { Attachment, ChatInputCommandInteraction, Message, ModalSubmitInteractio
 import { attachmentTable, db, tagsTable } from '../database.js';
 
 
-export async function insertTag(
+export async function handleCreateTag(
     interaction: ChatInputCommandInteraction | ModalSubmitInteraction,
     tagName: string,
     targetMessage: Message,
@@ -43,17 +43,4 @@ export async function insertTag(
     }
 
     await interaction.editReply(`Successfully created tag: '${ tagName }'`);
-}
-
-
-export async function handleCreateTag(interaction: ChatInputCommandInteraction, name: string, messageId: string) {
-    await interaction.deferReply();
-    const message = await interaction.channel?.messages.fetch(messageId).catch(err => {
-        console.log(interaction.user.username, 'caused', err.message);
-    });
-    if ( message == null ) {
-        await interaction.editReply('Message ID provided is invalid. Please check and try again.');
-        return;
-    }
-    await insertTag(interaction, name, message);
 }
