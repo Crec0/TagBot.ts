@@ -21,22 +21,22 @@ client.on('interactionCreate', async (interaction: Interaction) => {
         await handleAutocomplete(interaction).catch(console.log);
 
     } else if ( interaction.isMessageContextMenuCommand() ) {
-        await handleMessageContextMenuCommand(interaction).catch(error => {
-            console.log(error);
+        handleMessageContextMenuCommand(interaction).catch(error => {
+            console.error(error);
             if ( interaction.deferred || interaction.replied ) {
-                interaction.editReply({ content: 'There was an error while executing this command' });
+                interaction.editReply({ content: error.message });
             } else {
-                interaction.reply({ content: 'There was an error while executing this command', ephemeral: true });
+                interaction.reply({ content: error.message, ephemeral: true });
             }
         });
 
     } else if ( interaction.isChatInputCommand() ) {
-        await handleChatCommand(interaction).catch(error => {
-            console.log(error);
-            if ( interaction.deferred ) {
-                interaction.editReply({ content: 'There was an error while executing this command' });
+        handleChatCommand(interaction).catch((error: Error) => {
+            console.error(error);
+            if ( interaction.deferred || interaction.replied ) {
+                interaction.editReply({ content: error.message });
             } else {
-                interaction.reply({ content: 'There was an error while executing this command', ephemeral: true });
+                interaction.reply({ content: error.message, ephemeral: true });
             }
         });
 
