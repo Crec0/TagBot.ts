@@ -4,8 +4,8 @@ import { attachmentTable, db, tagsTable } from '../database.js';
 import { eq } from 'drizzle-orm';
 
 
-export async function handleDeleteTag(interaction: ChatInputCommandInteraction, name: string) {
-    const tag = getTagPreparedStatement.get({ tag_id: name });
+export async function handleDeleteTag(interaction: ChatInputCommandInteraction, tagID: string) {
+    const tag = getTagPreparedStatement.get({ tag_id: tagID });
 
     if ( tag == null ) {
         await interaction.reply({
