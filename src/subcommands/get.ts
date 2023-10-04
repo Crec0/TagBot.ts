@@ -18,9 +18,9 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
     const attachments = getAttachmentsPreparedStatement.all({ tag_id: tag.tagID });
     const mainEmbed = new EmbedBuilder()
         .setTitle(tag.tagName)
-        .setDescription(tag.content)
+        .setDescription(tag.content == '' ? null : tag.content)
         .setFooter({
-            text: `Tag by ${ tag.ownerUsername }`,
+            text: `Owned by ${ tag.ownerUsername }`,
         })
         .setColor('#e77f67');
 

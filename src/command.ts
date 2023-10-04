@@ -3,7 +3,7 @@ import {
     ApplicationCommandType,
     AutocompleteInteraction,
     ChatInputCommandInteraction,
-    ContextMenuCommandBuilder,
+    ContextMenuCommandBuilder, Message,
     MessageContextMenuCommandInteraction,
     ModalBuilder,
     ModalSubmitInteraction,
@@ -21,7 +21,8 @@ import { handleGetTag } from './subcommands/get.js';
 import { handleDeleteTag } from './subcommands/delete.js';
 import { handleListTag } from './subcommands/list.js';
 import { handleUpdateTag } from './subcommands/update.js';
-import { handleCreateTag, insertTag } from './subcommands/insert.js';
+import { handleCreateTag } from './subcommands/insert.js';
+import { handleClaimTag, handleReleaseTag, handleTransferTag } from './subcommands/ownership.js';
 
 
 export const commands = [
@@ -37,6 +38,8 @@ export const commands = [
                     new SlashCommandStringOption()
                         .setName('name')
                         .setDescription('Name of the tag')
+                        .setMinLength(3)
+                        .setMaxLength(32)
                         .setRequired(true)
                         .setAutocomplete(true),
                 )
@@ -59,6 +62,8 @@ export const commands = [
                     new SlashCommandStringOption()
                         .setName('name')
                         .setDescription('Name of the tag')
+                        .setMinLength(3)
+                        .setMaxLength(32)
                         .setRequired(true),
                 )
                 .addStringOption(
@@ -91,6 +96,8 @@ export const commands = [
                     new SlashCommandStringOption()
                         .setName('name')
                         .setDescription('Name of the tag')
+                        .setMinLength(3)
+                        .setMaxLength(32)
                         .setRequired(true)
                         .setAutocomplete(true),
                 )
@@ -98,6 +105,8 @@ export const commands = [
                     new SlashCommandStringOption()
                         .setName('message-id')
                         .setDescription('Message id of the message you want to update the tag with.')
+                        .setMinLength(3)
+                        .setMaxLength(32)
                         .setRequired(true),
                 ),
         )
@@ -140,9 +149,12 @@ async function fetchMessageOrThrow(interaction: ChatInputCommandInteraction): Pr
 
     let message = null;
     try {
-        message = await interaction.channel?.messages.fetch(messageId);
+        message = await interaction.channel?.messages.fetch({
+            message: messageId,
+            force: true,
+        });
     } catch ( e ) {
-        console.error(e)
+        console.error(e);
     }
 
     if ( message == null ) {
@@ -191,7 +203,8 @@ export async function handleMessageContextMenuCommand(intr: MessageContextMenuCo
         .setCustomId('tag-name-modal-input')
         .setLabel('Tag Name')
         .setStyle(TextInputStyle.Short)
-        .setMinLength(3);
+        .setMinLength(3)
+        .setMaxLength(32);
 
     const inputActionRow = new ActionRowBuilder<TextInputBuilder>()
         .addComponents(inputComponent);
@@ -211,7 +224,7 @@ export async function handleMessageContextMenuCommand(intr: MessageContextMenuCo
     intr.awaitModalSubmit({ time: 10_000, filter: modalFilter })
         .then(async (modalIntr) => {
             const tagName = modalIntr.components[0].components[0].value;
-            await insertTag(modalIntr, tagName, intr.targetMessage);
+            await handleCreateTag(modalIntr, tagName, intr.targetMessage);
         })
         .catch(console.error);
 }
