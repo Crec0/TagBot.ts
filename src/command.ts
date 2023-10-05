@@ -38,8 +38,6 @@ export const commands = [
                     new SlashCommandStringOption()
                         .setName('name')
                         .setDescription('Name of the tag')
-                        // .setMinLength(3)
-                        // .setMaxLength(32)
                         .setRequired(true)
                         .setAutocomplete(true),
                 )
