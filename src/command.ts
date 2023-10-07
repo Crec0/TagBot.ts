@@ -22,8 +22,7 @@ import { handleDeleteTag } from './subcommands/delete.js';
 import { handleListTag } from './subcommands/list.js';
 import { handleUpdateTag } from './subcommands/update.js';
 import { handleCreateTag } from './subcommands/insert.js';
-import { handleClaimTag, handleReleaseTag, handleTransferTag } from './subcommands/ownership.js';
-
+// import { handleClaimTag, handleReleaseTag, handleTransferTag } from './subcommands/ownership.js';
 
 export const commands = [
     new SlashCommandBuilder()
@@ -191,6 +190,18 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
     case 'list':
         await handleListTag(interaction);
         break;
+    //
+    // case 'claim':
+    //     await handleClaimTag(interaction);
+    //     break;
+    //
+    // case 'release':
+    //     await handleReleaseTag(interaction);
+    //     break;
+    //
+    // case 'transfer':
+    //     await handleTransferTag(interaction);
+    //     break;
     }
 }
 
