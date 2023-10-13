@@ -1,4 +1,14 @@
-import { ChatInputCommandInteraction, EmbedBuilder, userMention } from 'discord.js';
+import {
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonInteraction,
+    ButtonStyle,
+    ChatInputCommandInteraction,
+    ComponentType,
+    EmbedBuilder,
+    Message,
+    userMention,
+} from 'discord.js';
 import { getAttachmentsPreparedStatement, getTagPreparedStatement } from '../prepared-statements.js';
 
 
@@ -16,6 +26,20 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
         return;
     }
 
+    let repliedMessage: Message<boolean>;
+
+    const quickYeetButtonID = Number(interaction.id).toString(36).slice(-8);
+    const quickYeetButton = new ButtonBuilder()
+        .setStyle(ButtonStyle.Danger)
+        .setLabel('Delete')
+        .setEmoji('\uD83D\uDDD1')
+        .setCustomId(quickYeetButtonID);
+    const buttonCollectorFilter = (btnIntr: ButtonInteraction) => {
+        btnIntr.deferUpdate();
+        return btnIntr.user.id === interaction.user.id;
+    };
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(quickYeetButton);
+
     const attachments = getAttachmentsPreparedStatement.all({ tag_id: tag.tagID });
 
     if ( tag.useEmbed === 0 || !useEmbed ) {
@@ -31,9 +55,11 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
                 content += '\n' + attachmentLinks.join('\n');
             }
         }
-        await interaction.reply({
+        repliedMessage = await interaction.reply({
+            fetchReply: true,
             ephemeral: isEphemeral,
             content: content,
+            components: [ actionRow ],
             allowedMentions: targetUserId != null ? { users: [ targetUserId ] } : {},
         });
 
@@ -68,11 +94,26 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
                 embeds.push(attachmentEmbed);
             }
         }
-        await interaction.reply({
+        repliedMessage = await interaction.reply({
             embeds: embeds,
             ephemeral: isEphemeral,
+            fetchReply: true,
+            components: [ actionRow ],
             content: targetUserId != null ? userMention(targetUserId) : '',
             allowedMentions: targetUserId != null ? { users: [ targetUserId ] } : {},
         });
     }
+
+    repliedMessage.awaitMessageComponent({
+            time: 30_000,
+            componentType: ComponentType.Button,
+            filter: buttonCollectorFilter,
+        })
+        .then(async (i) => {
+            await repliedMessage.delete();
+        })
+        .catch(async (i) => {
+            console.error(i)
+            await repliedMessage.edit({ components: [] });
+        });
 }
