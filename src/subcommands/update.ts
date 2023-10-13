@@ -4,10 +4,8 @@ import { attachmentTable, db, tagsTable } from '../database.js';
 import { eq } from 'drizzle-orm';
 
 
-export async function handleUpdateTag(interaction: ChatInputCommandInteraction, tagID: string, message: Message) {
+export async function handleUpdateTag(interaction: ChatInputCommandInteraction, tagID: string, message: Message, shouldUseEmbed: boolean) {
     const tag = getTagPreparedStatement.get({ tag_id: tagID });
-
-    console.log(message)
 
     if ( tag == null ) {
         await interaction.editReply({
@@ -16,7 +14,7 @@ export async function handleUpdateTag(interaction: ChatInputCommandInteraction, 
         return;
     }
 
-    if ( interaction.user.id !== tag.ownerUserID || !interaction.memberPermissions!.has(PermissionsBitField.Flags.Administrator) ) {
+    if ( interaction.user.id !== tag.ownerUserID && !interaction.memberPermissions!.has(PermissionsBitField.Flags.Administrator) ) {
         await interaction.editReply({
             content: 'You are not the owner of the tag.',
         });
@@ -28,6 +26,7 @@ export async function handleUpdateTag(interaction: ChatInputCommandInteraction, 
             content: message.content,
             ownerUsername: interaction.user.username,
             ownerUserID: interaction.user.id,
+            useEmbed: shouldUseEmbed ? 1 : 0,
         })
         .where(eq(tagsTable.tagID, tag.tagID))
         .prepare(true)

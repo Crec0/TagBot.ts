@@ -6,6 +6,7 @@ export async function handleCreateTag(
     interaction: ChatInputCommandInteraction | ModalSubmitInteraction,
     tagName: string,
     targetMessage: Message,
+    useEmbed: boolean,
 ) {
     const insertRes = db.insert(tagsTable)
         .values({
@@ -14,6 +15,7 @@ export async function handleCreateTag(
             ownerUsername: interaction.user.username,
             ownerUserID: interaction.user.id.toString(),
             guildID: interaction.guild!.id,
+            useEmbed: useEmbed ? 1 : 0,
         })
         .returning()
         .prepare(true)
@@ -29,7 +31,7 @@ export async function handleCreateTag(
     if ( attachments.size > 0 ) {
         const attachmentsRows = attachments.map((attachment: Attachment): typeof attachmentTable.$inferInsert => {
             return {
-                tagID: insertRes[0].tagID,
+                tagID: insertRes[0]!.tagID,
                 name: attachment.name,
                 url: attachment.url,
                 type: attachment.contentType,

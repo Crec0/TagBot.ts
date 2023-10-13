@@ -3,7 +3,8 @@ import {
     ApplicationCommandType,
     AutocompleteInteraction,
     ChatInputCommandInteraction,
-    ContextMenuCommandBuilder, Message,
+    ContextMenuCommandBuilder,
+    Message,
     MessageContextMenuCommandInteraction,
     ModalBuilder,
     ModalSubmitInteraction,
@@ -11,6 +12,7 @@ import {
     SlashCommandBuilder,
     SlashCommandStringOption,
     SlashCommandSubcommandBuilder,
+    type SlashCommandSubcommandsOnlyBuilder,
     SlashCommandUserOption,
     TextInputBuilder,
     TextInputStyle,
@@ -21,10 +23,11 @@ import { handleGetTag } from './subcommands/get.js';
 import { handleDeleteTag } from './subcommands/delete.js';
 import { handleListTag } from './subcommands/list.js';
 import { handleUpdateTag } from './subcommands/update.js';
-import { handleCreateTag } from './subcommands/insert.js';
+import { handleCreateTag } from './subcommands/create.js';
 // import { handleClaimTag, handleReleaseTag, handleTransferTag } from './subcommands/ownership.js';
 
-export const commands = [
+
+export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommandBuilder )[] = [
     new SlashCommandBuilder()
         .setName('tag')
         .setDescription('View, List, Create, Manage tags!')
@@ -49,6 +52,11 @@ export const commands = [
                     new SlashCommandBooleanOption()
                         .setName('ephemeral')
                         .setDescription('Should the reply be ephemeral'),
+                )
+                .addBooleanOption(
+                    new SlashCommandBooleanOption()
+                        .setName('use-embed')
+                        .setDescription('Should the message be sent as an embed. Defaults to true.'),
                 ),
         )
         .addSubcommand(
@@ -68,6 +76,11 @@ export const commands = [
                         .setName('message-id')
                         .setDescription('Message id of the message you want to create a tag for')
                         .setRequired(true),
+                )
+                .addBooleanOption(
+                    new SlashCommandBooleanOption()
+                        .setName('use-embed')
+                        .setDescription('Should the message be sent as an embed. Defaults to true.'),
                 ),
         )
         .addSubcommand(
@@ -103,6 +116,11 @@ export const commands = [
                         .setMinLength(3)
                         .setMaxLength(32)
                         .setRequired(true),
+                )
+                .addBooleanOption(
+                    new SlashCommandBooleanOption()
+                        .setName('use-embed')
+                        .setDescription('Should the message not create an embed'),
                 ),
         )
         .addSubcommand(
@@ -162,7 +180,6 @@ async function fetchMessageOrThrow(interaction: ChatInputCommandInteraction): Pr
 export async function handleChatCommand(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
     const name = interaction.options.getString('name')?.trim();
-    const messageId = interaction.options.getString('message-id')?.trim();
 
     switch ( subcommand ) {
     case 'get':
@@ -172,13 +189,15 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
     case 'create':
         await interaction.deferReply({ ephemeral: true });
         const insertMessage = await fetchMessageOrThrow(interaction);
-        await handleCreateTag(interaction, name!, insertMessage!);
+        const useEmbed = interaction.options.getBoolean('use-embed') ?? false;
+        await handleCreateTag(interaction, name!, insertMessage!, useEmbed);
         break;
 
     case 'update':
         await interaction.deferReply({ ephemeral: true });
         const updateMessage = await fetchMessageOrThrow(interaction);
-        await handleUpdateTag(interaction, name!, updateMessage!);
+        const shouldUseEmbed = interaction.options.getBoolean('use-embed') ?? false;
+        await handleUpdateTag(interaction, name!, updateMessage!, shouldUseEmbed);
         break;
 
     case 'delete':
@@ -204,22 +223,33 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
 }
 
 export async function handleMessageContextMenuCommand(intr: MessageContextMenuCommandInteraction) {
-    const modalID = 'tag-name-modal-' + Number(intr.id).toString(36).slice(-8);
+    const randomChars = Number(intr.id).toString(36).slice(-8);
+    const modalID = 'tag-modal-' + randomChars;
 
-    const inputComponent = new TextInputBuilder()
-        .setCustomId('tag-name-modal-input')
+    const nameInput = new TextInputBuilder()
+        .setCustomId('tag-name-input' + randomChars)
         .setLabel('Tag Name')
         .setStyle(TextInputStyle.Short)
+        .setRequired(true)
         .setMinLength(3)
         .setMaxLength(32);
 
-    const inputActionRow = new ActionRowBuilder<TextInputBuilder>()
-        .addComponents(inputComponent);
+    const embedInput = new TextInputBuilder()
+        .setCustomId('tag-embed-input' + randomChars)
+        .setLabel('Should output be an embed? Yes? Type "Yes"')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false)
+        .setPlaceholder('No')
+        .setMinLength(1)
+        .setMaxLength(3);
+
+    const inputActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(nameInput);
+    const embedActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(embedInput);
 
     const modal = new ModalBuilder()
         .setCustomId(modalID)
         .setTitle('Create tag')
-        .addComponents(inputActionRow);
+        .addComponents(inputActionRow, embedActionRow);
 
     const modalFilter = async (mi: ModalSubmitInteraction) => {
         await mi.deferReply({ ephemeral: true });
@@ -228,10 +258,12 @@ export async function handleMessageContextMenuCommand(intr: MessageContextMenuCo
 
     await intr.showModal(modal);
 
-    intr.awaitModalSubmit({ time: 10_000, filter: modalFilter })
+    intr.awaitModalSubmit({ time: 60_000, filter: modalFilter })
         .then(async (modalIntr) => {
-            const tagName = modalIntr.components[0].components[0].value;
-            await handleCreateTag(modalIntr, tagName, intr.targetMessage);
+            const tagNameRes = modalIntr.components[0]!.components[0]!.value;
+            const shouldEmbedRes = modalIntr.components[1]!.components[0]!.value;
+            const shouldEmbed = shouldEmbedRes.includes('yes');
+            await handleCreateTag(modalIntr, tagNameRes, intr.targetMessage, shouldEmbed);
         })
         .catch(console.error);
 }
