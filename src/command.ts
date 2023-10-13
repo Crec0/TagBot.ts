@@ -18,12 +18,13 @@ import {
     TextInputStyle,
 } from 'discord.js';
 import { listTagsPreparedStatement } from './prepared-statements.js';
-import { distance } from 'fastest-levenshtein';
 import { handleGetTag } from './subcommands/get.js';
 import { handleDeleteTag } from './subcommands/delete.js';
 import { handleListTag } from './subcommands/list.js';
 import { handleUpdateTag } from './subcommands/update.js';
 import { handleCreateTag } from './subcommands/create.js';
+import { bitapSearch } from './bitap.js';
+
 // import { handleClaimTag, handleReleaseTag, handleTransferTag } from './subcommands/ownership.js';
 
 
@@ -145,8 +146,8 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction) {
     const focusedValue = interaction.options.getFocused().toLowerCase();
     const tagNames = listTagsPreparedStatement
         .all({ guild_id: interaction.guild!.id })
-        .flatMap(tag => {
-            return { name: tag.tagName, score: distance(focusedValue, tag.tagName), id: tag.tagID };
+        .map(tag => {
+            return { name: tag.tagName, score: bitapSearch(tag.tagName, focusedValue), id: tag.tagID };
         })
         .sort((a, b) => a.score - b.score)
         .slice(0, 25)
