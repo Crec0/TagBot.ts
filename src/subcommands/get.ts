@@ -6,15 +6,13 @@ import {
     ChatInputCommandInteraction,
     ComponentType,
     EmbedBuilder,
-    Message,
     userMention,
 } from 'discord.js';
 import { getAttachmentsPreparedStatement, getTagPreparedStatement } from '../prepared-statements.js';
 
 
-export async function handleGetTag(interaction: ChatInputCommandInteraction, name: string) {
+export async function handleGetTag(interaction: ChatInputCommandInteraction, name: string, isEphemeral: boolean) {
     const targetUserId = interaction.options.getUser('target')?.id;
-    const isEphemeral = interaction.options.getBoolean('ephemeral') ?? false;
     const useEmbed = interaction.options.getBoolean('use-embed') ?? true;
     const tag = getTagPreparedStatement.get({ tag_id: name });
 
@@ -25,44 +23,19 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
         });
         return;
     }
-
-    let repliedMessage: Message<boolean>;
-
-    const quickYeetButtonID = Number(interaction.id).toString(36).slice(-8);
-    const quickYeetButton = new ButtonBuilder()
-        .setStyle(ButtonStyle.Danger)
-        .setLabel('Delete')
-        .setEmoji('\uD83D\uDDD1')
-        .setCustomId(quickYeetButtonID);
-    const buttonCollectorFilter = (btnIntr: ButtonInteraction) => {
-        btnIntr.deferUpdate();
-        return btnIntr.user.id === interaction.user.id;
-    };
-    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(quickYeetButton);
+    const embeds = [];
+    let content = ( targetUserId != null ? `${ userMention(targetUserId) }\n` : '' );
 
     const attachments = getAttachmentsPreparedStatement.all({ tag_id: tag.tagID });
 
     if ( tag.useEmbed === 0 || !useEmbed ) {
-        let content = ( targetUserId != null ? `${ userMention(targetUserId) }\n` : '' ) + tag.content;
-
+        content += tag.content;
         if ( attachments.length > 0 ) {
-            const attachmentLinks: string[] = [];
-
-            for ( const attachment of attachments ) {
-                attachmentLinks.push(`[${ attachment.name }](${ attachment.url })`);
-            }
+            const attachmentLinks = attachments.map(attachment => `[${ attachment.name }](${ attachment.url })`);
             if ( attachmentLinks.length > 0 ) {
                 content += '\n' + attachmentLinks.join('\n');
             }
         }
-        repliedMessage = await interaction.reply({
-            fetchReply: true,
-            ephemeral: isEphemeral,
-            content: content,
-            components: [ actionRow ],
-            allowedMentions: targetUserId != null ? { users: [ targetUserId ] } : {},
-        });
-
     } else {
         const mainEmbed = new EmbedBuilder()
             .setTitle(tag.tagName)
@@ -72,7 +45,7 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
             })
             .setColor('#e77f67');
 
-        const embeds = [ mainEmbed ];
+        embeds.push(mainEmbed);
 
         if ( attachments.length > 0 ) {
             const attachmentsEmbedDescription: string[] = [];
@@ -94,26 +67,36 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
                 embeds.push(attachmentEmbed);
             }
         }
-        repliedMessage = await interaction.reply({
-            embeds: embeds,
-            ephemeral: isEphemeral,
-            fetchReply: true,
-            components: [ actionRow ],
-            content: targetUserId != null ? userMention(targetUserId) : '',
-            allowedMentions: targetUserId != null ? { users: [ targetUserId ] } : {},
-        });
     }
+    const quickYeetButton = new ButtonBuilder()
+        .setStyle(ButtonStyle.Danger)
+        .setLabel('Quick delete')
+        .setEmoji('\uD83D\uDDD1')
+        .setCustomId(parseInt(interaction.id).toString(36).slice(8));
+
+    const quickYeetUserFilter = (btnIntr: ButtonInteraction) => {
+        btnIntr.deferUpdate();
+        return btnIntr.user.id === interaction.user.id;
+    };
+
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(quickYeetButton);
+    const repliedMessage = await interaction.reply({
+        allowedMentions: targetUserId != null ? { users: [ targetUserId ] } : {},
+        components: [ actionRow ],
+        content: content,
+        embeds: embeds,
+        ephemeral: isEphemeral,
+        fetchReply: true,
+    });
 
     repliedMessage.awaitMessageComponent({
             time: 30_000,
             componentType: ComponentType.Button,
-            filter: buttonCollectorFilter,
+            filter: quickYeetUserFilter,
         })
-        .then(async (i) => {
-            await repliedMessage.delete();
-        })
+        .then(async (i) => await repliedMessage.delete())
         .catch(async (i) => {
-            console.error(i)
+            console.error(i);
             await repliedMessage.edit({ components: [] });
         });
 }
