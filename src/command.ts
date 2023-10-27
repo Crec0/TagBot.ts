@@ -25,7 +25,7 @@ import { handleUpdateTag } from './subcommands/update.js';
 import { handleCreateTag } from './subcommands/create.js';
 import { bitapSearch } from './bitap.js';
 
-// import { handleClaimTag, handleReleaseTag, handleTransferTag } from './subcommands/ownership.js';
+import { handleClaimTag, handleReleaseTag, handleTransferTag } from './subcommands/ownership.js';
 
 
 export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommandBuilder )[] = [
@@ -47,12 +47,29 @@ export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommand
                 .addUserOption(
                     new SlashCommandUserOption()
                         .setName('target')
-                        .setDescription('User to ping on response. ephemeral option is ignored, if provided'),
+                        .setDescription('User to ping on response.'),
                 )
                 .addBooleanOption(
                     new SlashCommandBooleanOption()
-                        .setName('ephemeral')
-                        .setDescription('Should the reply be ephemeral'),
+                        .setName('use-embed')
+                        .setDescription('Should the message be sent as an embed. Defaults to true.'),
+                ),
+        )
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('preview')
+                .setDescription('Sends an ephemeral message giving you a preview of how the output would look like.')
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('name')
+                        .setDescription('Name of the tag')
+                        .setRequired(true)
+                        .setAutocomplete(true),
+                )
+                .addUserOption(
+                    new SlashCommandUserOption()
+                        .setName('target')
+                        .setDescription('User to ping on response. ephemeral option is ignored, if provided'),
                 )
                 .addBooleanOption(
                     new SlashCommandBooleanOption()
@@ -135,6 +152,48 @@ export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommand
                         .setRequired(true)
                         .setAutocomplete(true),
                 ),
+            )
+            .addSubcommand(
+                new SlashCommandSubcommandBuilder()
+                    .setName('claim')
+                    .setDescription('Claims a tag if the specified tag is unclaimed')
+                    .addStringOption(
+                        new SlashCommandStringOption()
+                            .setName('name')
+                            .setDescription('Name of the tag')
+                            .setRequired(true)
+                            .setAutocomplete(true),
+                    ),
+            )
+            .addSubcommand(
+                new SlashCommandSubcommandBuilder()
+                    .setName('release')
+                    .setDescription('Releases ownership of the specified tag.')
+                    .addStringOption(
+                        new SlashCommandStringOption()
+                            .setName('name')
+                            .setDescription('Name of the tag')
+                            .setRequired(true)
+                            .setAutocomplete(true),
+                    ),
+            )
+            .addSubcommand(
+                new SlashCommandSubcommandBuilder()
+                    .setName('transfer')
+                    .setDescription('Transfers ownership of the specified tag to another user.')
+                    .addStringOption(
+                        new SlashCommandStringOption()
+                            .setName('name')
+                            .setDescription('Name of the tag')
+                            .setRequired(true)
+                            .setAutocomplete(true),
+                    )
+                    .addUserOption(
+                        new SlashCommandUserOption()
+                            .setName('new-owner')
+                            .setDescription('New owner of the tag')
+                            .setRequired(true),
+                    ),
         ),
     new ContextMenuCommandBuilder()
         .setName('Create tag')
@@ -184,7 +243,11 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
 
     switch ( subcommand ) {
     case 'get':
-        await handleGetTag(interaction, name!);
+        await handleGetTag(interaction, name!, false);
+        break;
+
+    case 'preview':
+        await handleGetTag(interaction, name!, true);
         break;
 
     case 'create':
@@ -208,18 +271,21 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
     case 'list':
         await handleListTag(interaction);
         break;
-    //
-    // case 'claim':
-    //     await handleClaimTag(interaction);
-    //     break;
-    //
-    // case 'release':
-    //     await handleReleaseTag(interaction);
-    //     break;
-    //
-    // case 'transfer':
-    //     await handleTransferTag(interaction);
-    //     break;
+
+    case 'claim':
+        await interaction.deferReply({ ephemeral: true });
+        await handleClaimTag(interaction, name!);
+        break;
+
+    case 'release':
+        await interaction.deferReply({ ephemeral: true });
+        await handleReleaseTag(interaction, name!);
+        break;
+
+    case 'transfer':
+        await interaction.deferReply({ ephemeral: true });
+        await handleTransferTag(interaction, name!);
+        break;
     }
 }
 

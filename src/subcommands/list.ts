@@ -30,9 +30,8 @@ export async function handleListTag(interaction: ChatInputCommandInteraction) {
     const descriptionLines: string[] = [];
 
     for ( const tag of tags ) {
-        descriptionLines.push(
-            `0. **${ tag.tagName }**, id: ${ tag.tagID }, owned by ${ tag.ownerUsername }`,
-        );
+        const ownershipStatus = tag.ownerUserID == null ? 'Unclaimed' : `owned by ${ tag.ownerUsername }`;
+        descriptionLines.push(`0. **${ tag.tagName }**, id: ${ tag.tagID }, ${ ownershipStatus }`);
     }
 
     const titlePrefix = username == null && isUnclaimed ? 'Unclaimed' : 'All';

@@ -8,16 +8,17 @@ export async function handleUpdateTag(interaction: ChatInputCommandInteraction, 
     const tag = getTagPreparedStatement.get({ tag_id: tagID });
 
     if ( tag == null ) {
-        await interaction.editReply({
-            content: 'Tag name provided is invalid. Please check and try again.',
-        });
+        await interaction.editReply('Tag name provided is invalid. Please check and try again.');
+        return;
+    }
+
+    if (tag.ownerUserID == null) {
+        await interaction.editReply('The tag is currently unclaimed. You can edit it after claiming it.');
         return;
     }
 
     if ( interaction.user.id !== tag.ownerUserID && !interaction.memberPermissions!.has(PermissionsBitField.Flags.Administrator) ) {
-        await interaction.editReply({
-            content: 'You are not the owner of the tag.',
-        });
+        await interaction.editReply('You are not the owner of the tag.');
         return;
     }
 

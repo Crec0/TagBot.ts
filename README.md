@@ -7,7 +7,7 @@
 * Invite the bot to your server
 * Install the dependencies with `npm install`
 * Create a `.env` file with the `DISCORD_TOKEN` property set
-* Run the bot with `node index.ts`
+* Run the bot with `node run launch`
 
 ## Commands
 
@@ -55,19 +55,19 @@
     - `tag list @username`
     - `tag list unclaimed`
 
-### Tag Claim (Future Plan)
+### Tag Claim
 
 - Command: `tag claim <tag_name>`
-- Description: Claims ownership of the specified tag.
+- Description: Claims ownership of the specified tag, if tag is unclaimed
 - Example: `tag claim welcome`
 
-### Tag Unclaim (Future Plan)
+### Tag Release
 
-- Command: `tag unclaim <tag_name>`
+- Command: `tag release <tag_name>`
 - Description: Releases ownership of the specified tag.
-- Example: `tag unclaim welcome`
+- Example: `tag release welcome`
 
-### Tag Transfer (Future Plan)
+### Tag Transfer
 
 - Command: `tag transfer <tag_name> <new_owner>`
 - Description: Transfers ownership of the specified tag to another user.
