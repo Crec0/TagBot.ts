@@ -18,6 +18,7 @@ type Paginator = {
     currentPage: number
     lastInteracted: number
     message: Message
+    interaction: ChatInputCommandInteraction
 }
 
 const PREVIOUS_BUTTON_ID = 'list:previous:';
@@ -31,7 +32,7 @@ setInterval(() => {
     const keysToRemove = [];
     const now = Date.now();
     for ( let [ k, v ] of activePaginators.entries() ) {
-        if ( now - v.lastInteracted > 10_000 ) {
+        if ( now - v.lastInteracted > 300_000 ) {
             keysToRemove.push(k);
         }
     }
@@ -40,21 +41,23 @@ setInterval(() => {
         console.log(`Deleting ${ k }`);
         activePaginators.delete(k);
     });
-}, 10_000);
+}, 300_000);
 
 export async function handleListTag(interaction: ChatInputCommandInteraction) {
-    const reply = await interaction.deferReply({ fetchReply: true });
 
     const conditions = [
         eq(tagsTable.guildID, sql.placeholder('guild_id')),
     ];
 
     const username = interaction.options.getUser('user')?.username;
-    const isUnclaimed = interaction.options.getBoolean('is-unclaimed') ?? false;
+    const onlyUnclaimed = interaction.options.getBoolean('only-unclaimed') ?? false;
+    const ephemeral = interaction.options.getBoolean('ephemeral') ?? false;
+
+    const reply = await interaction.deferReply({ fetchReply: true, ephemeral: ephemeral });
 
     if ( username != null ) {
         conditions.push(eq(tagsTable.ownerUsername, sql.placeholder('username')));
-    } else if ( isUnclaimed ) {
+    } else if ( onlyUnclaimed ) {
         conditions.push(isNull(tagsTable.ownerUsername));
     }
 
@@ -68,15 +71,22 @@ export async function handleListTag(interaction: ChatInputCommandInteraction) {
             username: username,
         });
 
-    const titlePrefix = username == null && isUnclaimed ? 'Unclaimed' : 'All';
+    const titlePrefix = username == null && onlyUnclaimed ? 'Unclaimed' : 'All';
     const titleSuffix = username != null ? `Owned by ${ username }` : '';
     const title = `${ titlePrefix } Tags ${ titleSuffix }`.trim();
 
-    const paginator: Paginator = { title: title, tags: [], currentPage: 0, lastInteracted: Date.now(), message: reply };
+    const paginator: Paginator = {
+        title: title,
+        tags: [],
+        currentPage: 0,
+        lastInteracted: Date.now(),
+        message: reply,
+        interaction: interaction,
+    };
     activePaginators.set(reply.id, paginator);
 
     for ( const tag of tags ) {
-        paginator.tags.push(`**${ tag.tagName }** (ID: ${ tag.tagID }), (*Owner: ${ tag.ownerUsername ?? 'Unclaimed' }*)`);
+        paginator.tags.push(`**${ tag.tagName }**, Owned by ${ tag.ownerUsername ?? 'Unclaimed' }`);
     }
 
     await interaction.editReply(paginatorPage(reply, paginator));
@@ -104,8 +114,12 @@ export async function listOnButton(intr: ButtonInteraction, splits: [ string, st
         await intr.update(paginatorPage(intr.message, paginator));
         break;
     case 'delete':
-        activePaginators.delete(intr.message.id);
-        await intr.message.delete();
+        if ( paginator.interaction.ephemeral ) {
+            await paginator.interaction.deleteReply();
+        } else {
+            await intr.message.delete();
+        }
+        activePaginators.delete(intr.message.id)
         return;
     }
 }
@@ -121,7 +135,7 @@ function paginatorPage(message: Message, paginator: Paginator) {
         .setStyle(ButtonStyle.Secondary)
         .setCustomId(NEXT_BUTTON_ID + message.id)
         .setEmoji('\u27A1')
-        .setDisabled(paginator.currentPage + 1 === Math.ceil(paginator.tags.length / ITEMS_PER_PAGE));
+        .setDisabled(paginator.currentPage >= Math.floor(paginator.tags.length / ITEMS_PER_PAGE));
 
     const deleteButton = new ButtonBuilder()
         .setStyle(ButtonStyle.Danger)

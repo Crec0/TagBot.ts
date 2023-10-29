@@ -114,8 +114,13 @@ export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommand
                 )
                 .addBooleanOption(
                     new SlashCommandBooleanOption()
-                        .setName('is-unclaimed')
+                        .setName('only-unclaimed')
                         .setDescription('Only display tags unclaimed tags'),
+                )
+                .addBooleanOption(
+                    new SlashCommandBooleanOption()
+                        .setName('ephemeral')
+                        .setDescription('Shows list as ephemeral message'),
                 ),
         )
         .addSubcommand(
