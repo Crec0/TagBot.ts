@@ -102,7 +102,11 @@ export async function listOnButton(intr: ButtonInteraction, splits: [ string, st
     const paginator = activePaginators.get(splits[2]);
     if ( paginator == null ) {
         if ( splits[1] === 'delete' ) {
-            await intr.message.delete();
+            try {
+                await intr.message.delete();
+            } catch ( e ) {
+                console.error(`Failed to delete: ${intr.customId}. Was probably ephemeral.`)
+            }
         }
         return;
     }
