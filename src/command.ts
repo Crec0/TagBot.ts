@@ -215,10 +215,10 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction) {
         })
         .sort((a, b) => a.score - b.score)
         .slice(0, 25)
-        .map(scoredNames => {
+        .map(s => {
             return {
-                name: `${ scoredNames.tag.tagName }, ID: ${ scoredNames.tag.tagID }, Owned by ${ scoredNames.tag.ownerUsername }`,
-                value: `${ scoredNames.tag.tagID }`,
+                name: `${ s.tag.tagName }, Owner: ${ s.tag.ownerUsername ?? 'Unclaimed' } (ID: ${ s.tag.tagID })`,
+                value: `${ s.tag.tagID }`,
             };
         });
 
