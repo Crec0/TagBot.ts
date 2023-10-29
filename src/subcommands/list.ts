@@ -37,8 +37,14 @@ setInterval(() => {
         }
     }
     keysToRemove.forEach(async k => {
-        await activePaginators.get(k)?.message.delete();
-        console.log(`Deleting ${ k }`);
+        const paginator = activePaginators.get(k);
+        if (paginator == null) return;
+
+        if ( paginator.interaction.ephemeral ) {
+            await paginator.interaction.deleteReply();
+        } else {
+            await paginator.message.delete();
+        }
         activePaginators.delete(k);
     });
 }, 300_000);
