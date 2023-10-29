@@ -13,7 +13,6 @@ import { getAttachmentsPreparedStatement, getTagPreparedStatement } from '../pre
 
 export async function handleGetTag(interaction: ChatInputCommandInteraction, name: string, isEphemeral: boolean) {
     const targetUserId = interaction.options.getUser('target')?.id;
-    const useEmbed = interaction.options.getBoolean('use-embed') ?? true;
     const tag = getTagPreparedStatement.get({ tag_id: name });
 
     if ( tag == null ) {
@@ -23,12 +22,14 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
         });
         return;
     }
+    const useEmbed = interaction.options.getBoolean('use-embed') ?? tag.useEmbed === 1;
+
     const embeds = [];
     let content = ( targetUserId != null ? `${ userMention(targetUserId) }\n` : '' );
 
     const attachments = getAttachmentsPreparedStatement.all({ tag_id: tag.tagID });
 
-    if ( tag.useEmbed === 0 || !useEmbed ) {
+    if ( !useEmbed ) {
         content += tag.content;
         if ( attachments.length > 0 ) {
             const attachmentLinks = attachments.map(attachment => `[${ attachment.name }](${ attachment.url })`);
@@ -89,14 +90,20 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
         fetchReply: true,
     });
 
-    repliedMessage.awaitMessageComponent({
-            time: 30_000,
-            componentType: ComponentType.Button,
-            filter: quickYeetUserFilter,
-        })
-        .then(async (i) => await repliedMessage.delete())
-        .catch(async (i) => {
-            console.error(i);
-            await repliedMessage.edit({ components: [] });
-        });
+    try {
+        repliedMessage.awaitMessageComponent({
+                time: 30_000,
+                componentType: ComponentType.Button,
+                filter: quickYeetUserFilter,
+            })
+            .then(async (i) => isEphemeral ? interaction.deleteReply() : repliedMessage.delete())
+            .catch(async (i) => {
+                console.error(i);
+                await repliedMessage.edit({ components: [] });
+            });
+    } catch ( e ) {
+        if (!(e instanceof Error && e.message === "Collector received no interactions before ending with reason: time")) {
+            console.error(e)
+        }
+    }
 }
