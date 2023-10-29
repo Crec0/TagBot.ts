@@ -5,7 +5,7 @@ import {
     ButtonInteraction,
     ChannelType,
     ChatInputCommandInteraction,
-    ContextMenuCommandBuilder,
+    ContextMenuCommandBuilder, DiscordAPIError,
     Message,
     MessageContextMenuCommandInteraction,
     ModalBuilder,
@@ -240,10 +240,15 @@ async function fetchMessageOrThrow(interaction: ChatInputCommandInteraction): Pr
             throw Error('Channel is invalid or unreachable');
         }
 
-        message = channel.messages.fetch({ message: messageId, force: true });
+        message = await channel.messages.fetch({ message: messageId, force: true });
     } catch ( e ) {
-        if (e instanceof Error && e.message === "Unknown Message") {
-            throw Error("Message ID was either invalid or from a different channel. Make sure the link is from this guild or in case of id, its from this channel.")
+        if ( e instanceof DiscordAPIError ) {
+            switch ( e.code ) {
+            case 10003:
+                throw Error('Channel ID provided in the link was either invalid or from a different guild. Make sure the link is from this guild.');
+            case 10008:
+                throw Error('Message ID was either invalid or from a different channel. Make sure the link is from this guild or in case of id, its from this channel.');
+            }
         }
         throw e;
     }
