@@ -1,7 +1,9 @@
 import {
     ActionRowBuilder,
     ApplicationCommandType,
-    AutocompleteInteraction, ButtonComponent, ButtonInteraction,
+    AutocompleteInteraction,
+    ButtonInteraction,
+    ChannelType,
     ChatInputCommandInteraction,
     ContextMenuCommandBuilder,
     Message,
@@ -91,8 +93,8 @@ export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommand
                 )
                 .addStringOption(
                     new SlashCommandStringOption()
-                        .setName('message-id')
-                        .setDescription('Message id of the message you want to create a tag for')
+                        .setName('message-id-link')
+                        .setDescription('Message id or link of the message you want to create a tag for')
                         .setRequired(true),
                 )
                 .addBooleanOption(
@@ -129,10 +131,8 @@ export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommand
                 )
                 .addStringOption(
                     new SlashCommandStringOption()
-                        .setName('message-id')
-                        .setDescription('Message id of the message you want to update the tag with.')
-                        .setMinLength(3)
-                        .setMaxLength(32)
+                        .setName('message-id-link')
+                        .setDescription('Message id or link of the message you want to update the tag with.')
                         .setRequired(true),
                 )
                 .addBooleanOption(
@@ -218,16 +218,32 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction) {
 }
 
 async function fetchMessageOrThrow(interaction: ChatInputCommandInteraction): Promise<Message> {
-    const messageId = interaction.options.getString('message-id')!.trim();
+    const input = interaction.options.getString('message-id-link')!.trim();
+    const regex = /(?:(?<channel>\d+)\/)?(?<message>\d+)$/;
+    const match = input.match(regex);
+
+    const channelId = match?.groups?.channel;
+    const messageId = match?.groups?.message;
 
     let message = null;
+
+    if ( messageId == null ) {
+        throw Error('Message link or id provided is invalid. Please check and try again.');
+    }
+
     try {
-        message = await interaction.channel?.messages.fetch({
-            message: messageId,
-            force: true,
-        });
+        const channel = channelId == null
+            ? interaction.channel!
+            : await interaction.guild!.channels.fetch(channelId, { force: true });
+
+        if ( channel == null || channel.type == ChannelType.GuildCategory ) {
+            throw Error('Channel is invalid or unreachable');
+        }
+
+        message = channel.messages.fetch({ message: messageId, force: true });
     } catch ( e ) {
         console.error(e);
+        throw e;
     }
 
     if ( message == null ) {
