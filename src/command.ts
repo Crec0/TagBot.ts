@@ -1,7 +1,7 @@
 import {
     ActionRowBuilder,
     ApplicationCommandType,
-    AutocompleteInteraction,
+    AutocompleteInteraction, ButtonComponent, ButtonInteraction,
     ChatInputCommandInteraction,
     ContextMenuCommandBuilder,
     Message,
@@ -20,7 +20,7 @@ import {
 import { listTagsPreparedStatement } from './prepared-statements.js';
 import { handleGetTag } from './subcommands/get.js';
 import { handleDeleteTag } from './subcommands/delete.js';
-import { handleListTag } from './subcommands/list.js';
+import { handleListTag, listOnButton } from './subcommands/list.js';
 import { handleUpdateTag } from './subcommands/update.js';
 import { handleCreateTag } from './subcommands/create.js';
 import { bitapSearch } from './bitap.js';
@@ -152,48 +152,48 @@ export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommand
                         .setRequired(true)
                         .setAutocomplete(true),
                 ),
-            )
-            .addSubcommand(
-                new SlashCommandSubcommandBuilder()
-                    .setName('claim')
-                    .setDescription('Claims a tag if the specified tag is unclaimed')
-                    .addStringOption(
-                        new SlashCommandStringOption()
-                            .setName('name')
-                            .setDescription('Name of the tag')
-                            .setRequired(true)
-                            .setAutocomplete(true),
-                    ),
-            )
-            .addSubcommand(
-                new SlashCommandSubcommandBuilder()
-                    .setName('release')
-                    .setDescription('Releases ownership of the specified tag.')
-                    .addStringOption(
-                        new SlashCommandStringOption()
-                            .setName('name')
-                            .setDescription('Name of the tag')
-                            .setRequired(true)
-                            .setAutocomplete(true),
-                    ),
-            )
-            .addSubcommand(
-                new SlashCommandSubcommandBuilder()
-                    .setName('transfer')
-                    .setDescription('Transfers ownership of the specified tag to another user.')
-                    .addStringOption(
-                        new SlashCommandStringOption()
-                            .setName('name')
-                            .setDescription('Name of the tag')
-                            .setRequired(true)
-                            .setAutocomplete(true),
-                    )
-                    .addUserOption(
-                        new SlashCommandUserOption()
-                            .setName('new-owner')
-                            .setDescription('New owner of the tag')
-                            .setRequired(true),
-                    ),
+        )
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('claim')
+                .setDescription('Claims a tag if the specified tag is unclaimed')
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('name')
+                        .setDescription('Name of the tag')
+                        .setRequired(true)
+                        .setAutocomplete(true),
+                ),
+        )
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('release')
+                .setDescription('Releases ownership of the specified tag.')
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('name')
+                        .setDescription('Name of the tag')
+                        .setRequired(true)
+                        .setAutocomplete(true),
+                ),
+        )
+        .addSubcommand(
+            new SlashCommandSubcommandBuilder()
+                .setName('transfer')
+                .setDescription('Transfers ownership of the specified tag to another user.')
+                .addStringOption(
+                    new SlashCommandStringOption()
+                        .setName('name')
+                        .setDescription('Name of the tag')
+                        .setRequired(true)
+                        .setAutocomplete(true),
+                )
+                .addUserOption(
+                    new SlashCommandUserOption()
+                        .setName('new-owner')
+                        .setDescription('New owner of the tag')
+                        .setRequired(true),
+                ),
         ),
     new ContextMenuCommandBuilder()
         .setName('Create tag')
@@ -333,4 +333,12 @@ export async function handleMessageContextMenuCommand(intr: MessageContextMenuCo
             await handleCreateTag(modalIntr, tagNameRes, intr.targetMessage, shouldEmbed);
         })
         .catch(console.error);
+}
+
+
+export async function handleButton(interaction: ButtonInteraction) {
+    const splits = interaction.customId.split(':');
+    if ( splits.length > 0 && splits[0] == 'list' ) {
+        await listOnButton(interaction, splits as unknown as [ string, string, string ]);
+    }
 }
