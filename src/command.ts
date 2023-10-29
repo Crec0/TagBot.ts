@@ -211,12 +211,15 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction) {
     const tagNames = listTagsPreparedStatement
         .all({ guild_id: interaction.guild!.id })
         .map(tag => {
-            return { name: tag.tagName, score: bitapSearch(tag.tagName, focusedValue), id: tag.tagID };
+            return { tag: tag, score: bitapSearch(tag.tagName, focusedValue) };
         })
         .sort((a, b) => a.score - b.score)
         .slice(0, 25)
         .map(scoredNames => {
-            return { name: `${ scoredNames.name } ID: ${ scoredNames.id }`, value: `${ scoredNames.id }` };
+            return {
+                name: `${ scoredNames.tag.tagName }, ID: ${ scoredNames.tag.tagID }, Owned by ${ scoredNames.tag.ownerUsername }`,
+                value: `${ scoredNames.tag.tagID }`,
+            };
         });
 
     await interaction.respond(tagNames);
