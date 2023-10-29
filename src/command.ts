@@ -242,7 +242,9 @@ async function fetchMessageOrThrow(interaction: ChatInputCommandInteraction): Pr
 
         message = channel.messages.fetch({ message: messageId, force: true });
     } catch ( e ) {
-        console.error(e);
+        if (e instanceof Error && e.message === "Unknown Message") {
+            throw Error("Message ID was either invalid or from a different channel. Make sure the link is from this guild or in case of id, its from this channel.")
+        }
         throw e;
     }
 
