@@ -9,6 +9,7 @@ import {
     userMention,
 } from 'discord.js';
 import { getAttachmentsPreparedStatement, getTagPreparedStatement } from '../prepared-statements.js';
+import { logger } from '../index.js';
 
 
 export async function handleGetTag(interaction: ChatInputCommandInteraction, name: string, isEphemeral: boolean) {
@@ -36,6 +37,7 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
             if ( attachmentLinks.length > 0 ) {
                 content += '\n' + attachmentLinks.join('\n');
             }
+            content += `\nOwned by ${ tag.ownerUsername }`;
         }
     } else {
         const mainEmbed = new EmbedBuilder()
@@ -69,6 +71,7 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
             }
         }
     }
+
     const quickYeetButton = new ButtonBuilder()
         .setStyle(ButtonStyle.Danger)
         .setLabel('Quick delete')
@@ -90,20 +93,14 @@ export async function handleGetTag(interaction: ChatInputCommandInteraction, nam
         fetchReply: true,
     });
 
-    try {
-        repliedMessage.awaitMessageComponent({
-                time: 30_000,
-                componentType: ComponentType.Button,
-                filter: quickYeetUserFilter,
-            })
-            .then(async (i) => isEphemeral ? interaction.deleteReply() : repliedMessage.delete())
-            .catch(async (i) => {
-                console.error(i);
-                await repliedMessage.edit({ components: [] });
-            });
-    } catch ( e ) {
-        if (!(e instanceof Error && e.message === "Collector received no interactions before ending with reason: time")) {
-            console.error(e)
-        }
-    }
+    repliedMessage.awaitMessageComponent({
+            time: 30_000,
+            componentType: ComponentType.Button,
+            filter: quickYeetUserFilter,
+        })
+        .then(async () => isEphemeral ? interaction.deleteReply() : repliedMessage.delete())
+        .catch(async (i) => {
+            logger.warn(i.message);
+            await repliedMessage.edit({ components: [] });
+        });
 }

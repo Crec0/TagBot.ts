@@ -2,13 +2,17 @@
     "type": "module",
     "main": "build/index.js",
     "scripts": {
-        "launch": "tsc -p tsconfig.json && node ."
+        "launch": "tsc -p tsconfig.json && node -r source-map-support/register .",
+        "start": "npm install --omit=dev && npm launch"
     },
     "dependencies": {
+        "@tsed/logger": "^6.6.3",
+        "@tsed/logger-file": "^6.6.3",
         "better-sqlite3": "^8.6.0",
         "discord.js": "^14.3.0",
         "dotenv": "^16.0.2",
-        "drizzle-orm": "^0.28.6"
+        "drizzle-orm": "^0.28.6",
+        "source-map-support": "^0.5.21"
     },
     "devDependencies": {
         "@types/better-sqlite3": "^7.6.5",

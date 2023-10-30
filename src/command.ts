@@ -28,6 +28,7 @@ import { handleCreateTag } from './subcommands/create.js';
 import { bitapSearch } from './bitap.js';
 
 import { handleClaimTag, handleReleaseTag, handleTransferTag } from './subcommands/ownership.js';
+import { logger } from './index.js';
 
 
 export const commands: ( SlashCommandSubcommandsOnlyBuilder | ContextMenuCommandBuilder )[] = [
@@ -360,10 +361,10 @@ export async function handleMessageContextMenuCommand(intr: MessageContextMenuCo
         .then(async (modalIntr) => {
             const tagNameRes = modalIntr.components[0]!.components[0]!.value;
             const shouldEmbedRes = modalIntr.components[1]!.components[0]!.value;
-            const shouldEmbed = shouldEmbedRes.includes('yes');
+            const shouldEmbed = shouldEmbedRes.toLowerCase().includes('yes');
             await handleCreateTag(modalIntr, tagNameRes, intr.targetMessage, shouldEmbed);
         })
-        .catch(console.error);
+        .catch(logger.error);
 }
 
 

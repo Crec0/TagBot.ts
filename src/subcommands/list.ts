@@ -10,6 +10,7 @@ import {
 } from 'discord.js';
 import { db, tagsTable } from '../database.js';
 import { and, eq, isNull, sql } from 'drizzle-orm';
+import { logger } from '../index.js';
 
 
 type Paginator = {
@@ -105,7 +106,7 @@ export async function listOnButton(intr: ButtonInteraction, splits: [ string, st
             try {
                 await intr.message.delete();
             } catch ( e ) {
-                console.error(`Failed to delete: ${intr.customId}. Was probably ephemeral.`)
+                logger.warn(`Failed to delete: ${intr.customId}. Was probably ephemeral.`)
             }
         }
         return;

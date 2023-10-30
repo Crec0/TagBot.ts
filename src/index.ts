@@ -1,13 +1,22 @@
 import dotenv from 'dotenv';
 import { ActivityType, Client, GatewayIntentBits, type Interaction, type RepliableInteraction } from 'discord.js';
-import {
-    commands,
-    handleAutocomplete,
-    handleButton,
-    handleChatCommand,
-    handleMessageContextMenuCommand,
-} from './command.js';
+import { handleAutocomplete, handleButton, handleChatCommand, handleMessageContextMenuCommand } from './command.js';
+import { Logger } from '@tsed/logger';
+import '@tsed/logger-file';
 
+
+export const logger = new Logger('Main');
+
+logger.appenders.set('file', {
+    type: 'file',
+    filename: `./logs/latest.log`,
+    layout: { type: 'basic' },
+    pattern: '.yyyy-MM-dd',
+});
+
+logger.appenders.set('console', {
+    type: 'console',
+});
 
 dotenv.config();
 
@@ -24,7 +33,7 @@ export const client = new Client({
 
 function onError(interaction: RepliableInteraction) {
     return async (error: Error) => {
-        console.error(error);
+        logger.error(error);
         if ( interaction.deferred || interaction.replied ) {
             await interaction.editReply({ content: error.message });
         } else {
@@ -35,7 +44,7 @@ function onError(interaction: RepliableInteraction) {
 
 client.on('interactionCreate', async (interaction: Interaction) => {
     if ( interaction.isAutocomplete() ) {
-        handleAutocomplete(interaction).catch(console.log);
+        handleAutocomplete(interaction).catch(logger.info);
 
     } else if ( interaction.isMessageContextMenuCommand() ) {
         handleMessageContextMenuCommand(interaction).catch(onError(interaction));
@@ -49,8 +58,8 @@ client.on('interactionCreate', async (interaction: Interaction) => {
 });
 
 client.once('ready', async () => {
-    console.log(`${ client.user!.tag } is online!`);
-    await client.application!.commands.set(commands);
+    logger.info(`${ client.user!.tag } is online!`);
+    // await client.application!.commands.set(commands);
 });
 
 await client.login(process.env.DISCORD_TOKEN);
