@@ -273,7 +273,7 @@ export async function handleChatCommand(interaction: ChatInputCommandInteraction
     const subcommand = interaction.options.getSubcommand();
     const name = interaction.options.getString('name')?.trim();
 
-    logger.info(`/tag ${ subcommand } ran by ${ interaction.user.username } in guild ${ interaction.guild!.name }`);
+    logger.info(`'${ interaction.toString() }' ran by ${ interaction.user.username } in guild ${ interaction.guild!.name }`);
 
     switch ( subcommand ) {
     case 'get':

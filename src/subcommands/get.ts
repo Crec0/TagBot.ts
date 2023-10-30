@@ -88,9 +88,8 @@ export async function handleGetTag(cmdIntr: ChatInputCommandInteraction, name: s
         if ( attachments.length > 0 ) {
             content += attachments
                 .map(attachment => `[${ attachment.name }](${ attachment.url })`)
-                .join('\n') + '\n';
+                .join('\n');
         }
-        content += `\n*Tag owned by ${ tag.ownerUsername }*`;
     } else {
         createEmbeds(tag, embeds, attachments);
     }
@@ -126,8 +125,5 @@ export async function handleGetTag(cmdIntr: ChatInputCommandInteraction, name: s
                 await repliedMessage.delete();
             }
         })
-        .catch(async (i) => {
-            logger.warn(i.message);
-            await repliedMessage.edit({ components: [] });
-        });
+        .catch(async (i) => logger.warn(i.message));
 }
