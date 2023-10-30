@@ -31,6 +31,8 @@ export const tagsTable = sqliteTable('tags', {
     ownerUserID: text('owner_user_id'),
 });
 
+export type Tag = typeof tagsTable.$inferSelect
+
 db.run(sql`
     CREATE TABLE IF NOT EXISTS attachments
     (
@@ -48,3 +50,5 @@ export const attachmentTable = sqliteTable('attachments', {
     url: text('url').notNull(),
     type: text('type'),
 });
+
+export type Attachment = typeof attachmentTable.$inferSelect
